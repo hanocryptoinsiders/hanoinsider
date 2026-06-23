@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Crown, Monitor, Shield, Loader2, ExternalLink, ArrowRight, KeyRound, Laptop, User } from "lucide-react";
-import { PageHeader } from "@/components/dashboard/DashboardLayout";
-import { useTier } from "@/lib/tier-context";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -56,7 +54,6 @@ function formatShortDate(isoString?: string | null) {
 type TabType = "general" | "subscription" | "security" | "community";
 
 export default function Settings() {
-  const { upgrade } = useTier();
   const { profile, updateProfile, isPremium, role, user, refreshProfile } = useAuth();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -316,15 +313,13 @@ export default function Settings() {
                     </div>
                     <p className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase font-bold">CURRENT TIER</p>
                     <div className="flex items-center gap-2.5 mt-2">
-                      <Crown className={`h-5 w-5 ${isPremium ? "text-[oklch(0.78_0.14_85)]" : "text-muted-foreground"}`} />
+                      <Crown className="h-5 w-5 text-[oklch(0.78_0.14_85)]" />
                       <h3 className="font-display text-2xl font-bold capitalize leading-none">{role} Account</h3>
                     </div>
                     <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-                      {isPremium
-                        ? premiumSource === "manual"
-                          ? "Your premium credentials were manually activated by the administrator. Full Member access is permanent."
-                          : "Your premium account is currently active. Billing is managed through Stripe."
-                        : "You are currently on the Subscription Required tier. Limited dashboard analytics and macro insights. Upgrade to access premium alpha."}
+                      {premiumSource === "manual" || role === "admin"
+                        ? "Your credentials were manually activated by the administrator. Full Member access is permanent."
+                        : "Your account is currently active. Billing is managed through Stripe."}
                     </p>
                   </div>
 
@@ -371,45 +366,26 @@ export default function Settings() {
 
                 {/* Actions Column */}
                 <div className="flex flex-col justify-center border-t md:border-t-0 md:border-l border-border/60 pt-5 md:pt-0 md:pl-6">
-                  {isFree ? (
-                    <div className="space-y-3">
-                      <button
-                        onClick={upgrade}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground text-background py-3 text-xs font-bold hover:bg-foreground/90 transition shadow-lg active:scale-[0.99]"
-                      >
-                        View Plans & Pricing
-                      </button>
-                      <button
-                        onClick={handleUpgradeCheckout}
-                        disabled={isCheckoutLoading}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[oklch(0.78_0.14_85)] to-[oklch(0.72_0.15_75)] text-background py-3 text-xs font-bold hover:brightness-110 transition disabled:opacity-60 active:scale-[0.99] shadow-[0_6px_20px_-8px_rgba(232,192,122,0.3)]"
-                      >
-                        {isCheckoutLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                        Upgrade Instantly <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {premiumSource === "stripe" ? (
-                        <div className="rounded-xl border border-border bg-secondary/10 p-4 text-center text-xs text-muted-foreground space-y-2">
-                          <p className="font-medium text-foreground">Subscription Active</p>
-                          <p>Manage invoices, payment methods, and cancellation from the secure Stripe customer portal.</p>
-                          <button
-                            onClick={handleManageBilling}
-                            disabled={isCheckoutLoading}
-                            className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2 text-[11px] font-semibold text-background transition hover:bg-foreground/90 disabled:opacity-60"
-                          >
-                            {isCheckoutLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                            Open billing portal
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-dashed border-border bg-secondary/10 p-4 text-center text-xs text-muted-foreground">
-                          Permanent Admin Access active.
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-3">
+                    {premiumSource === "stripe" ? (
+                      <div className="rounded-xl border border-border bg-secondary/10 p-4 text-center text-xs text-muted-foreground space-y-2">
+                        <p className="font-medium text-foreground">Subscription Active</p>
+                        <p>Manage invoices, payment methods, and cancellation from the secure Stripe customer portal.</p>
+                        <button
+                          onClick={handleManageBilling}
+                          disabled={isCheckoutLoading}
+                          className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-2 text-[11px] font-semibold text-background transition hover:bg-foreground/90 disabled:opacity-60 cursor-pointer"
+                        >
+                          {isCheckoutLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                          Open billing portal
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border bg-secondary/10 p-4 text-center text-xs text-muted-foreground">
+                        Permanent Access active.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

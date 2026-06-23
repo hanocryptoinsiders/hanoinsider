@@ -112,20 +112,7 @@ function SidebarContent({ onNavigate, compact = false }: { onNavigate?: () => vo
         })}
       </nav>
 
-      {!isPremium && (
-        <div className="m-4 rounded-[1.35rem] border border-primary/20 bg-[linear-gradient(180deg,rgba(22,18,34,0.98),rgba(15,12,24,0.94))] p-4 text-center shadow-[0_24px_60px_-36px_rgba(168,85,247,0.95)]">
-          <div className="text-[10px] font-semibold tracking-[0.2em] text-muted-foreground">INSIDERS PLAN</div>
-          <div className="mt-1 text-sm font-semibold text-primary">Subscription Required</div>
-          <div className="mt-2 font-display text-xl font-extrabold">$50 <span className="text-xs font-normal text-muted-foreground">/ lifetime</span></div>
-          <Link
-            href="/pricing"
-            onClick={onNavigate}
-            className="mt-3 block w-full rounded-lg border border-border bg-secondary/50 px-3 py-2 text-xs font-semibold transition-colors hover:bg-secondary"
-          >
-            View Pricing
-          </Link>
-        </div>
-      )}
+
 
       <div className="mt-auto border-t border-white/6 p-4">
         <div className={`flex items-center gap-3 rounded-[1.15rem] border px-3 py-3 ${hasMemberAura ? "border-primary/25 bg-primary/[0.08] shadow-[0_24px_60px_-34px_rgba(168,85,247,0.82)]" : "border-white/8 bg-white/[0.03]"}`}>
@@ -235,14 +222,9 @@ function Shell({ children }: { children: ReactNode }) {
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold capitalize">
+                        <span className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold capitalize text-primary">
                           {role || "member"}
                         </span>
-                        {isPremium ? (
-                          <span className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                            Premium
-                          </span>
-                        ) : null}
                       </div>
                     </div>
 

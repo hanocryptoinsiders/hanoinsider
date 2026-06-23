@@ -2,7 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 import {
   Sparkles,
   Box,
@@ -19,6 +22,10 @@ import {
   LayoutDashboard,
   TrendingUp,
   Plus,
+  Loader2,
+  CreditCard,
+  ShieldCheck,
+  Mail,
 } from "lucide-react";
 import { HanoWordmark } from "@/components/brand/HanoWordmark";
 
@@ -27,12 +34,123 @@ const birdMascot = "/assets/hanoinfrontend/bird-mascot.jpg";
 const articleCover = "/assets/hanoinfrontend/article-cover.jpg";
 
 export function HanoLanding() {
+  const { user, grantPremium, isPremium } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [activePlan, setActivePlan] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  // Poll for payment success confirmation
+  useEffect(() => {
+    const isSuccess = searchParams.get("checkout") === "success" || searchParams.get("session_id");
+    const hasCheckoutKey = typeof window !== "undefined" && localStorage.getItem("hano_checkout");
+
+    if (isSuccess || hasCheckoutKey) {
+      setIsVerifying(true);
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        try {
+          const res = await fetch("/api/stripe/check-status");
+          const data = await res.json();
+          attempts++;
+
+          if (data.isPremium) {
+            clearInterval(poll);
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("hano_checkout");
+            }
+            grantPremium();
+            toast.success("Payment verified! Welcome to Hano Insiders.");
+            setIsVerifying(false);
+            router.push("/dashboard");
+          } else if (attempts >= 15) {
+            clearInterval(poll);
+            setIsVerifying(false);
+            toast.error("Payment verification is taking longer than expected. Please refresh this page.");
+          }
+        } catch (err) {
+          console.error("Verification poll error:", err);
+        }
+      }, 2000);
+
+      return () => clearInterval(poll);
+    }
+  }, [searchParams, grantPremium, router]);
+
+  // Auto-scroll to pricing if renew=1
+  useEffect(() => {
+    if (searchParams.get("renew") === "1") {
+      // Short delay to ensure DOM is painted
+      const timer = setTimeout(() => {
+        const pricingSection = document.getElementById("pricing");
+        if (pricingSection) {
+          pricingSection.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
+  const handleCheckout = async (plan: string, offer?: string) => {
+    if (!user) {
+      router.push(`/register?next=${encodeURIComponent("/?renew=1")}`);
+      return;
+    }
+
+    setIsLoading(true);
+    setActivePlan(offer === "early_bird" ? "early_bird" : "monthly");
+
+    try {
+      const res = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, offer }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Failed to create checkout session");
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("hano_checkout", JSON.stringify({ provider: "stripe", timestamp: Date.now() }));
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("hano_checkout");
+      }
+      setIsLoading(false);
+      setActivePlan(null);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground bg-noise relative">
+      {/* Verify Overlay */}
+      {isVerifying && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <h2 className="mt-4 font-display text-2xl font-bold">Verifying your payment...</h2>
+          <p className="mt-2 text-sm text-muted-foreground max-w-xs">We are confirming your premium credentials with Stripe. This takes just a moment.</p>
+        </div>
+      )}
+
       <Nav />
+
+      {/* Warning Banner */}
+      {user && !isPremium && (
+        <div className="mx-auto max-w-7xl px-6 mt-4 animate-[fadeIn_0.2s_ease-out]">
+          <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 text-center text-sm text-primary font-medium flex items-center justify-center gap-2">
+            <ShieldCheck className="h-4.5 w-4.5 shrink-0" />
+            <span>Active subscription required to access the dashboard. Please select a pricing plan below to subscribe.</span>
+          </div>
+        </div>
+      )}
+
       <main className="mx-auto max-w-7xl px-6 pb-24">
         <Hero />
-        <Pricing />
+        <Pricing handleCheckout={handleCheckout} isLoading={isLoading} activePlan={activePlan} userEmail={user?.email || null} />
         <Features />
         <About />
         <DashboardPreview />
@@ -47,6 +165,9 @@ export function HanoLanding() {
 }
 
 function Nav() {
+  const { user, profile, isPremium } = useAuth();
+  const router = useRouter();
+  
   const links = [
     { label: "Home", href: "#home" },
     { label: "Features", href: "#features" },
@@ -54,6 +175,22 @@ function Nav() {
     { label: "About", href: "#about" },
     { label: "FAQs", href: "#faqs" },
   ];
+
+  const handleEnterDashboard = () => {
+    if (isPremium) {
+      router.push("/dashboard");
+    } else {
+      const pricingSection = document.getElementById("pricing");
+      if (pricingSection) {
+        pricingSection.scrollIntoView({ behavior: "smooth" });
+      } else {
+        router.push("/?renew=1#pricing");
+      }
+    }
+  };
+
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "Hano Insider";
+  const avatarUrl = profile?.avatar_url || "/assets/hanoinfrontend/hero-mascot.jpg";
 
   return (
     <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
@@ -73,15 +210,34 @@ function Nav() {
         ))}
       </nav>
       <div className="flex items-center gap-3">
-        <Link
-          href="/login"
-          className="rounded-lg border border-border bg-secondary/40 px-5 py-2 text-sm font-medium transition-colors hover:bg-secondary"
-        >
-          Login
-        </Link>
-        <Link href="/register" className="btn-primary rounded-lg px-5 py-2 text-sm font-semibold">
-          Join Insiders
-        </Link>
+        {user ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleEnterDashboard}
+              className="rounded-lg border border-border bg-secondary/40 px-5 py-2 text-sm font-medium transition-colors hover:bg-secondary cursor-pointer"
+            >
+              Enter Dashboard
+            </button>
+            <div className="hidden items-center gap-2 rounded-full border border-border bg-secondary/40 py-1 pl-1 pr-3 md:flex">
+              <div className="h-7 w-7 overflow-hidden rounded-full border border-white/10">
+                <img src={avatarUrl} referrerPolicy="no-referrer" alt="Profile" className="h-full w-full object-cover" />
+              </div>
+              <span className="text-xs font-semibold">{displayName}</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Link
+              href="/login"
+              className="rounded-lg border border-border bg-secondary/40 px-5 py-2 text-sm font-medium transition-colors hover:bg-secondary"
+            >
+              Login
+            </Link>
+            <Link href="/register" className="btn-primary rounded-lg px-5 py-2 text-sm font-semibold">
+              Join Insiders
+            </Link>
+          </>
+        )}
       </div>
     </header>
   );
@@ -89,7 +245,7 @@ function Nav() {
 
 function Hero() {
   return (
-    <section id="home" className="grid grid-cols-1 items-center gap-10 pt-8 lg:grid-cols-2">
+    <section id="home" className="grid grid-cols-1 items-center gap-10 pt-8 lg:grid-cols-2 animate-[fadeIn_0.3s_ease-out]">
       <div>
         <div className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-4 py-1.5 text-xs font-semibold tracking-wider">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -111,9 +267,9 @@ function Hero() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-4">
-          <Link href="/register" className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold">
+          <a href="#pricing" className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold">
             Start Your Edge <ArrowRight className="h-4 w-4" />
-          </Link>
+          </a>
           <a
             href="#about"
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary/30 px-6 py-3.5 text-sm font-semibold transition-colors hover:bg-secondary"
@@ -215,7 +371,17 @@ function useCountdown() {
   return t;
 }
 
-function Pricing() {
+function Pricing({
+  handleCheckout,
+  isLoading,
+  activePlan,
+  userEmail,
+}: {
+  handleCheckout: (plan: string, offer?: string) => Promise<void>;
+  isLoading: boolean;
+  activePlan: string | null;
+  userEmail: string | null;
+}) {
   const t = useCountdown();
   const blocks = [
     { v: t.d, l: "DAYS" },
@@ -253,6 +419,8 @@ function Pricing() {
             "Early access to new features",
             "Cancel anytime",
           ]}
+          onClick={() => handleCheckout("monthly")}
+          isLoading={isLoading && activePlan === "monthly"}
         />
         <PlanCard
           highlighted
@@ -267,6 +435,8 @@ function Pricing() {
             "Early access to new features",
             "Cancel anytime",
           ]}
+          onClick={() => handleCheckout("monthly", "early_bird")}
+          isLoading={isLoading && activePlan === "early_bird"}
         />
       </div>
 
@@ -283,14 +453,12 @@ function Pricing() {
             <div className="font-semibold">Crypto Payments</div>
             <div className="mt-1 text-xs text-muted-foreground">Manual payments with reminder emails before your plan expires.</div>
           </div>
-          <div className="flex items-center gap-2">
-            <CoinDot color="#f7931a" letter="B" />
-            <CoinDot color="#627eea" letter="E" />
-            <CoinDot color="#14f195" letter="S" />
-            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-secondary/40">
-              <Plus className="h-4 w-4" />
-            </div>
-          </div>
+          <a
+            href={`mailto:hannah@hanoanimations.com?subject=Hano%20Insiders%20manual%20crypto%20payment&body=I%20would%20like%20to%20subscribe%20using%20crypto.%20Registered%20email:%20${encodeURIComponent(userEmail || "")}`}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold hover:bg-white/10 transition-colors"
+          >
+            <Mail className="h-4 w-4" /> Email support
+          </a>
         </div>
       </div>
     </section>
@@ -313,6 +481,8 @@ function PlanCard({
   features,
   highlighted,
   badge,
+  onClick,
+  isLoading,
 }: {
   title: string;
   price: string;
@@ -321,9 +491,11 @@ function PlanCard({
   features: string[];
   highlighted?: boolean;
   badge?: string;
+  onClick?: () => void;
+  isLoading?: boolean;
 }) {
   return (
-    <div className={`relative card-surface p-7 ${highlighted ? "ring-glow" : ""}`}>
+    <div className={`relative card-surface p-7 flex flex-col justify-between min-h-[340px] ${highlighted ? "ring-glow" : ""}`}>
       {badge ? (
         <div className="absolute -top-3 left-6 rounded-md bg-primary px-3 py-1 text-[10px] font-bold tracking-wider text-primary-foreground">
           {badge}
@@ -355,6 +527,18 @@ function PlanCard({
           />
         ) : null}
       </div>
+      <button
+        onClick={onClick}
+        disabled={isLoading}
+        className="mt-6 w-full btn-primary py-3 text-xs font-bold rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+      >
+        {isLoading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <CreditCard className="h-3.5 w-3.5" />
+        )}
+        Subscribe Now
+      </button>
     </div>
   );
 }

@@ -10,8 +10,6 @@ import {
   UserPlus,
   Lock,
   Mail,
-  CheckCircle2,
-  Check,
 } from "lucide-react";
 
 const heroMascot = "/assets/hanoinfrontend/hero-mascot.jpg";
@@ -30,7 +28,6 @@ const RANGE_DATA: Record<Range, number[]> = {
 export function HanoDashboardHome() {
   return (
     <div className="space-y-5">
-      <EarlyBirdBanner />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
         <div className="space-y-5">
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -38,63 +35,12 @@ export function HanoDashboardHome() {
             <InsightsPanel />
             <ArticlesPanel />
           </div>
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <LifetimePanel />
-            <AffiliatePanel />
-          </div>
           <SecureBanner />
         </div>
         <aside className="space-y-5">
           <MascotCard />
-          <MembershipCard />
-          <PaymentsCard />
+          <AffiliatePanel />
         </aside>
-      </div>
-    </div>
-  );
-}
-
-function EarlyBirdBanner() {
-  const [copied, setCopied] = useState(false);
-  const code = "HAN050";
-
-  const copyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  };
-
-  return (
-    <div className="relative overflow-hidden card-surface p-5">
-      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-primary/10 via-transparent to-primary/5" />
-      <div className="flex flex-wrap items-center gap-5">
-        <Image src={heroMascot} alt="" width={1024} height={1024} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
-        <div className="min-w-0 flex-1">
-          <div className="text-xs font-bold tracking-[0.2em] text-primary">EARLY BIRD OFFER</div>
-          <div className="mt-1 text-sm text-muted-foreground">Lock in your lifetime rate. First 20 members only.</div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">Use code:</span>
-          <button
-            onClick={copyCode}
-            className="rounded-lg border border-dashed border-primary/60 bg-primary/5 px-3 py-1.5 font-mono text-sm font-bold tracking-wider text-primary"
-          >
-            {copied ? "COPIED!" : code}
-          </button>
-        </div>
-        <Link href="/pricing" className="btn-primary rounded-xl px-5 py-2.5 text-sm font-semibold">
-          Upgrade Now
-        </Link>
-        <div className="text-center">
-          <div className="text-sm font-bold">
-            <span className="text-foreground">20</span> <span className="text-muted-foreground">/ 20</span>
-          </div>
-          <div className="text-[10px] text-primary">Spots Left</div>
-        </div>
       </div>
     </div>
   );
@@ -255,39 +201,6 @@ function ArticlesPanel() {
   );
 }
 
-function LifetimePanel() {
-  return (
-    <div className="card-surface relative overflow-hidden p-5">
-      <div className="grid grid-cols-[1fr_auto] items-start gap-4">
-        <div>
-          <div className="font-semibold">Lifetime Access</div>
-          <div className="mt-1 text-xs text-muted-foreground">One-time payment. Forever access.</div>
-          <div className="mt-4 flex items-baseline gap-2">
-            <span className="font-display text-4xl font-extrabold">$50</span>
-            <span className="text-sm text-muted-foreground">/ lifetime</span>
-          </div>
-          <ul className="mt-4 space-y-2 text-xs">
-            {[
-              "Full access to all insights and articles",
-              "Exclusive insider content",
-              "Early access to new features",
-              "Cancel anytime (if needed)",
-            ].map((f) => (
-              <li key={f} className="flex items-center gap-2">
-                <Check className="h-3.5 w-3.5 text-primary" />
-                {f}
-              </li>
-            ))}
-          </ul>
-          <Link href="/pricing" className="btn-primary mt-5 block w-full rounded-xl py-3 text-center text-sm font-semibold">
-            Upgrade to Lifetime
-          </Link>
-        </div>
-        <Image src={heroMascot} alt="" width={1024} height={1024} className="hidden h-40 w-40 rounded-3xl object-cover sm:block" />
-      </div>
-    </div>
-  );
-}
 
 function AffiliatePanel() {
   return (
@@ -321,61 +234,6 @@ function MascotCard() {
   );
 }
 
-function MembershipCard() {
-  return (
-    <div className="card-surface p-5">
-      <div className="font-semibold">Membership</div>
-      <div className="mt-3 flex items-center gap-2">
-        <CheckCircle2 className="h-4 w-4 text-primary" />
-        <span className="text-sm font-semibold text-primary">Lifetime Member</span>
-      </div>
-      <div className="mt-3 flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Next billing: Never</span>
-        <span className="rounded bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">Lifetime</span>
-      </div>
-      <Link href="/dashboard/settings" className="mt-4 block w-full rounded-xl border border-border bg-secondary/50 py-2.5 text-center text-xs font-semibold transition-colors hover:bg-secondary">
-        Manage Plan
-      </Link>
-    </div>
-  );
-}
-
-function PaymentsCard() {
-  return (
-    <div className="card-surface p-5">
-      <div className="font-semibold">Payments</div>
-      <div className="mt-4 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/60 text-primary">
-              <FileText className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold">Card Payments (Stripe)</div>
-              <div className="text-[10px] text-muted-foreground">Auto-renewal enabled</div>
-            </div>
-          </div>
-          <CheckCircle2 className="h-4 w-4 text-success" />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/60 text-primary">
-              <Mail className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold">Crypto Payments</div>
-              <div className="text-[10px] text-muted-foreground">Manual renewal</div>
-              <div className="text-[10px] text-muted-foreground">
-                Reminder emails <span className="font-bold text-primary">ON</span>
-              </div>
-            </div>
-          </div>
-          <Mail className="h-4 w-4 text-primary" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function SecureBanner() {
   return (

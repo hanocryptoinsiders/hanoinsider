@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation";
 import { HanoLanding } from "@/components/marketing/HanoLanding";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isPremium } from "@/lib/auth";
 
 export default async function Landing() {
   const user = await getCurrentUser();
 
   if (user) {
-    redirect("/dashboard");
+    const active = await isPremium();
+    if (active) {
+      redirect("/dashboard");
+    }
   }
 
   return <HanoLanding />;

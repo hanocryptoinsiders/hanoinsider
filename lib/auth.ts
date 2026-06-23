@@ -224,7 +224,7 @@ export async function requirePremium(): Promise<{
   }
 
   if (!hasActiveSubscription(profile)) {
-    redirect("/pricing?renew=1");
+    redirect("/?renew=1");
   }
 
   return { user, profile };

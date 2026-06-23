@@ -2,24 +2,20 @@
 
 import Link from "next/link";
 import { TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import { Sparkline } from "@/components/dashboard/Sparkline";
-import { LockOverlay } from "@/components/dashboard/LockOverlay";
-import { useTier } from "@/lib/tier-context";
-import { useFreeAccess } from "@/lib/free-access-context";
-import { getMarketSnapshot, type CmcCoin, type MarketSnapshot } from "@/lib/market.functions";
 import { CoinLogo } from "@/components/CoinLogo";
 import { useMarketSnapshot } from "@/lib/market-hooks";
+import type { CmcCoin, MarketSnapshot } from "@/lib/market.functions";
 
 const fmtUsd = (n: number) => {
-  if (!Number.isFinite(n) || n === 0) return "â€”";
+  if (!Number.isFinite(n) || n === 0) return "—";
   if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
   if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
   if (n >= 1) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
   return `$${n.toPrecision(3)}`;
 };
+
 const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 
 function generateDeterministicPoints(changePct: number, seed: string) {
@@ -51,10 +47,6 @@ function generateDeterministicPoints(changePct: number, seed: string) {
 }
 
 export function MarketClient({ initialSnap }: { initialSnap: MarketSnapshot }) {
-  const { isFree, upgrade } = useTier();
-  const fa = useFreeAccess();
-  const showLock = isFree && !fa.state.marketPreview;
-
   const { data: snap, isLoading, isFetching, refetch, error } = useMarketSnapshot(initialSnap);
 
   const g = snap?.global;
@@ -70,31 +62,29 @@ export function MarketClient({ initialSnap }: { initialSnap: MarketSnapshot }) {
         { l: "24H VOLUME", v: fmtUsd(g.totalVolume24h), c: "Across all assets", up: true, points: generateDeterministicPoints(1.5, "vol") },
         { l: "FEAR & GREED", v: "Neutral", c: "Sentiment context", up: true, points: generateDeterministicPoints(0.05, "fng") },
         { l: "RSI CONTEXT", v: "52", c: "Balanced momentum", up: true, points: generateDeterministicPoints(0.05, "rsi") },
-        { l: "TOP ASSET", v: coins[0]?.symbol ?? "â€”", c: coins[0] ? fmtUsd(coins[0].price) : "", up: (coins[0]?.percentChange24h ?? 0) >= 0, points: generateDeterministicPoints(coins[0]?.percentChange24h ?? 0, "topasset") },
       ]
     : [];
 
   return (
     <>
-
       <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-[11px] tracking-[0.2em] text-muted-foreground">
           {snap?.error
-            ? <span className="text-destructive">ERROR Â· {snap.error}</span>
+            ? <span className="text-destructive">ERROR · {snap.error}</span>
             : snap?.fetchedAt
-              ? `LIVE Â· UPDATED ${new Date(snap.fetchedAt).toLocaleTimeString()}`
-              : "LOADINGâ€¦"}
+              ? `LIVE · UPDATED ${new Date(snap.fetchedAt).toLocaleTimeString()}`
+              : "LOADING…"}
         </p>
         <button
           onClick={() => refetch()}
-          className="panel inline-flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition"
+          className="panel inline-flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition cursor-pointer"
         >
           <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} /> Refresh
         </button>
       </div>
 
-      <div className="relative grid grid-cols-2 lg:grid-cols-3 gap-5">
-        {(!snap && isLoading ? Array.from({ length: 6 }).map((_, i) => ({ l: "LOADING", v: "â€”", c: "", up: true, key: i, points: [] })) : stats).map((s: any, i: number) => (
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+        {(!snap && isLoading ? Array.from({ length: 6 }).map((_, i) => ({ l: "LOADING", v: "—", c: "", up: true, key: i, points: [] })) : stats).map((s: any, i: number) => (
           <div key={s.l + i} className="panel p-6">
             <p className="text-[10px] tracking-wider text-muted-foreground">{s.l}</p>
             <p className="font-semibold tracking-tight mt-2 text-3xl">{s.v}</p>
@@ -102,7 +92,6 @@ export function MarketClient({ initialSnap }: { initialSnap: MarketSnapshot }) {
             <Sparkline height={36} points={s.points} className="mt-3" />
           </div>
         ))}
-        {showLock && <LockOverlay label="Premium analytics locked" onUpgrade={upgrade} />}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-5">
@@ -112,7 +101,7 @@ export function MarketClient({ initialSnap }: { initialSnap: MarketSnapshot }) {
             <div className="mt-4 space-y-3">
               {sec.data.length === 0 && (
                 <p className="text-xs text-muted-foreground py-6 text-center">
-                  {isLoading && !snap ? "Loadingâ€¦" : "No data."}
+                  {isLoading && !snap ? "Loading…" : "No data."}
                 </p>
               )}
               {sec.data.map((g) => {
