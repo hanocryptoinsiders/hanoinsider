@@ -50,7 +50,7 @@ export function NotificationBell({ className = "" }: { className?: string }) {
       setNotifications(data.notifications ?? []);
       setUnreadCount(data.unreadCount ?? 0);
     } catch {
-      // Silent fail â€” notifications are non-critical
+      // Silent fail — notifications are non-critical
     }
   }, [user]);
 

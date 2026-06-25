@@ -5,8 +5,8 @@
  * Use this for `emailRedirectTo` and any server-side absolute URL construction.
  *
  * Priority:
- *   1. NEXT_PUBLIC_SITE_URL  â€” explicitly set production URL
- *   2. NEXT_PUBLIC_VERCEL_URL â€” automatically injected by Vercel
+ *   1. NEXT_PUBLIC_SITE_URL  — explicitly set production URL
+ *   2. NEXT_PUBLIC_VERCEL_URL — automatically injected by Vercel
  *   3. localhost fallback for local development
  *
  * Never ends with a trailing slash.

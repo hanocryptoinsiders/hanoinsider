@@ -283,7 +283,7 @@ export function UserList({ initialUsers, currentAdminId }: UserListProps) {
                         <Check className="h-3.5 w-3.5" /> Premium
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Ã¢â‚¬â€</span>
+                      <span className="text-xs text-muted-foreground">���</span>
                     )}
                   </td>
                   <td className="py-3">
@@ -497,7 +497,7 @@ export function UserList({ initialUsers, currentAdminId }: UserListProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs text-success">
                       <ShieldCheck className="h-3.5 w-3.5" />
-                      <span>Active Ã¢â‚¬â€ no restrictions</span>
+                      <span>Active ��� no restrictions</span>
                     </div>
                     <div className="flex gap-2">
                       <button

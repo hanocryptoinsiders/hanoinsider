@@ -1,7 +1,7 @@
 /**
  * app/dashboard/affiliate/page.tsx
  *
- * Server Component â€” fetches real affiliate stats for the active user.
+ * Server Component — fetches real affiliate stats for the active user.
  * Gated to linked affiliates.
  */
 

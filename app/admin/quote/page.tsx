@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Check, RotateCcw } from "lucide-react";
 import { useQuote, MASCOT_OPTIONS, type MascotId } from "@/lib/quote-context";
+import { PageHeader } from "@/components/dashboard/DashboardLayout";
 
 export default function AdminQuote() {
   const q = useQuote();
@@ -31,13 +32,11 @@ export default function AdminQuote() {
 
   return (
     <div className="space-y-5">
-      <div className="panel p-5 sm:p-8">
-        <p className="text-[11px] tracking-[0.3em] text-muted-foreground">DASHBOARD HERO QUOTE</p>
-        <h1 className="font-display mt-3 text-3xl sm:text-4xl">Voice of The Hano Insiders</h1>
-        <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-          The quote and mascot photo shown beneath the dashboard hero. Visible to every member.
-        </p>
-      </div>
+      <PageHeader
+        kicker="Desk voice"
+        title="Hero quote & mascot"
+        desc="The quote and mascot photo shown beneath the dashboard hero. Visible to every member."
+      />
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-5">
         {/* Editor */}

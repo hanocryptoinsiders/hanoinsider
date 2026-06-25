@@ -272,7 +272,7 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
               <Clock className="h-3 w-3" /> {readingTime} min read
             </span>
             {item.published_at && (
-              <span>Â· {new Date(item.published_at).toLocaleDateString()}</span>
+              <span>· {new Date(item.published_at).toLocaleDateString()}</span>
             )}
           </div>
 
@@ -361,7 +361,7 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
         <div className="relative">
           {locked ? (
             <>
-              {/* Safe static placeholder â€” does NOT contain actual premium body */}
+              {/* Safe static placeholder — does NOT contain actual premium body */}
               <div className="pointer-events-none select-none blur-[6px] opacity-40 space-y-6">
                 <p className="text-base sm:text-lg leading-[1.8]">
                   Across the last 48 hours, we have watched liquidity quietly rotate back into the

@@ -1,7 +1,7 @@
 /**
  * app/admin/affiliates/page.tsx
  *
- * Server Component â€” fetches real affiliate data from Supabase.
+ * Server Component — fetches real affiliate data from Supabase.
  * Admins only (enforced by parent layout).
  */
 

@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import { UserList } from "./UserList";
 
 export const revalidate = 0; // Disable component cache to fetch up-to-date user registrations
-
 export default async function AdminUsersPage() {
   const { user } = await requireAdmin();
   

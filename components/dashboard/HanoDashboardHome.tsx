@@ -2,42 +2,96 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
-import {
-  TrendingUp,
-  Zap,
-  FileText,
-  UserPlus,
-  Lock,
-  Mail,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Lock } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { CoinLogo } from "@/components/CoinLogo";
+import type { CmcCoin, MarketSnapshot } from "@/lib/market.functions";
+import { fmtPct, fmtUsd, useCoinHistory, useHomeMarketSnapshot } from "@/lib/market-hooks";
 
-const heroMascot = "/assets/hanoinfrontend/hero-mascot.jpg";
-const articleCover = "/assets/hanoinfrontend/article-cover.jpg";
+const articleCover = "/assets/hanoinfrontend/cardBg.png";
 
 const RANGES = ["24H", "7D", "1M", "1Y"] as const;
 type Range = (typeof RANGES)[number];
 
-const RANGE_DATA: Record<Range, number[]> = {
-  "24H": [40, 38, 42, 45, 44, 48, 47, 52, 50, 55, 58, 60],
-  "7D": [30, 35, 32, 40, 38, 45, 43, 50, 48, 55, 52, 60, 58, 64],
-  "1M": [20, 25, 22, 30, 28, 36, 33, 42, 40, 48, 46, 54, 52, 60, 58, 64],
-  "1Y": [10, 18, 14, 22, 20, 28, 26, 34, 32, 40, 38, 48, 46, 56, 54, 64],
+const RANGE_TO_HISTORY: Record<Range, string> = {
+  "24H": "24H",
+  "7D": "7D",
+  "1M": "30D",
+  "1Y": "1Y",
 };
 
-export function HanoDashboardHome() {
+const HOME_SYMBOLS = ["BTC", "ETH", "SOL", "BNB"] as const;
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatDeskDate() {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date());
+}
+
+function formatUpdatedAt(iso: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+function pickHomeCoins(top: CmcCoin[]): CmcCoin[] {
+  return HOME_SYMBOLS.map((sym) => top.find((c) => c.symbol === sym)).filter(
+    (c): c is CmcCoin => Boolean(c)
+  );
+}
+
+export function HanoDashboardHome({ initialSnap }: { initialSnap: MarketSnapshot }) {
+  const { profile, user } = useAuth();
+  const { data: snap } = useHomeMarketSnapshot(initialSnap);
+  const name = profile?.full_name || user?.email?.split("@")[0] || "Insider";
+  const market = snap ?? initialSnap;
+
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
-        <div className="space-y-5">
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            <MarketOverview />
+    <div className="dash-home-stack">
+      <section className="dash-welcome">
+        <div>
+          <p className="dash-card-kicker">
+            <span className="pulse-dot" />
+            <span>The desk</span>
+            <span className="bar" />
+            <span className="acc">Today</span>
+          </p>
+          <h2>
+            {getGreeting()}, <em>{name}.</em>
+          </h2>
+        </div>
+        <p className="dash-welcome-note">
+          {formatDeskDate()}
+          <br />
+          Market · {market.error ? "demo data" : `updated ${formatUpdatedAt(market.fetchedAt)}`}
+        </p>
+      </section>
+
+      <DeskMetrics snap={market} />
+      <MarketOverview snap={market} />
+
+      <div className="dash-home-grid">
+        <div className="dash-home-main">
+          <div className="dash-home-split">
             <InsightsPanel />
             <ArticlesPanel />
           </div>
-          <SecureBanner />
+          <TrustBar />
         </div>
-        <aside className="space-y-5">
+
+        <aside className="dash-home-rail">
           <MascotCard />
           <AffiliatePanel />
         </aside>
@@ -46,134 +100,225 @@ export function HanoDashboardHome() {
   );
 }
 
-function PanelHead({
-  icon,
-  title,
-  action,
-}: {
-  icon?: ReactNode;
-  title: string;
-  action?: ReactNode;
-}) {
+function DeskMetrics({ snap }: { snap: MarketSnapshot }) {
+  const g = snap.global;
+  const mcapChg = g?.marketCapChange24h ?? 0;
+  const chgPositive = mcapChg >= 0;
+  const assets = g?.activeCryptocurrencies ?? snap.top.length;
+  const isLive = !snap.error;
+
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2 font-semibold">
-        {icon}
-        {title}
+    <section className="dash-metrics">
+      <div className="cell dash-metric-cell">
+        <div className="dash-stat-lbl">Market cap</div>
+        <div className="dash-stat-val">
+          {g ? fmtUsd(g.totalMarketCap, { compact: true }) : "—"}
+        </div>
       </div>
-      {action}
-    </div>
+      <div className="cell dash-metric-cell">
+        <div className="dash-stat-lbl">24h change</div>
+        <div
+          className="dash-stat-val"
+          style={{ color: chgPositive ? "var(--win)" : "var(--loss, #f87171)" }}
+        >
+          {g ? fmtPct(mcapChg) : "—"}
+        </div>
+      </div>
+      <div className="cell dash-metric-cell">
+        <div className="dash-stat-lbl">Assets tracked</div>
+        <div className="dash-stat-val">{assets > 0 ? `${assets}+` : "—"}</div>
+      </div>
+      <div className="cell dash-metric-cell">
+        <div className="dash-stat-lbl">Desk status</div>
+        <div className="dash-stat-val" style={{ color: "var(--accent-soft)", fontSize: 20 }}>
+          {isLive ? "Live" : "Demo"}
+        </div>
+      </div>
+    </section>
   );
 }
 
-function MarketOverview() {
+function MarketOverview({ snap }: { snap: MarketSnapshot }) {
   const [range, setRange] = useState<Range>("1Y");
-  const pts = RANGE_DATA[range];
-  const coins = [
-    { s: "BTC", p: "$67,892.21", c: "1.23%", color: "#f7931a", l: "B" },
-    { s: "ETH", p: "$3,456.78", c: "2.01%", color: "#627eea", l: "E" },
-    { s: "SOL", p: "$155.32", c: "3.65%", color: "#14f195", l: "S" },
-    { s: "BNB", p: "$598.11", c: "1.18%", color: "#f3ba2f", l: "B" },
-  ];
+  const historyTf = RANGE_TO_HISTORY[range];
+  const { data: historyPts, isLoading: historyLoading } = useCoinHistory("BTC", historyTf);
+
+  const g = snap.global;
+  const mcapChg = g?.marketCapChange24h ?? 0;
+  const chgPositive = mcapChg >= 0;
+  const coins = useMemo(() => pickHomeCoins(snap.top), [snap.top]);
+  const sparkPts = historyPts && historyPts.length >= 2 ? historyPts : null;
+  const isLive = !snap.error;
 
   return (
-    <div className="card-surface p-5">
-      <PanelHead
-        icon={<TrendingUp className="h-4 w-4 text-primary" />}
-        title="Market Overview"
-        action={
-          <span className="flex items-center gap-1.5 text-xs text-success">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-            Live
-          </span>
-        }
-      />
-      <div className="mt-4 flex items-baseline gap-3">
-        <span className="font-display text-3xl font-extrabold">$2.49T</span>
-        <span className="text-xs text-success">+2.35%</span>
-      </div>
-      <div className="text-xs text-muted-foreground">Total Market Cap</div>
-
-      <div className="mt-3 flex gap-1">
-        {RANGES.map((r) => (
-          <button
-            key={r}
-            onClick={() => setRange(r)}
-            className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${r === range ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-secondary/60"}`}
-          >
-            {r}
-          </button>
-        ))}
-      </div>
-
-      <Sparkline pts={pts} />
-
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        {coins.map((c) => (
-          <Link key={c.s} href={`/dashboard/coins/${c.s.toLowerCase()}`} className="rounded-lg border border-border bg-background/40 p-2.5 transition-colors hover:border-primary/40">
-            <div className="flex items-center gap-1.5">
-              <div className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] text-white" style={{ background: c.color }}>
-                {c.l}
-              </div>
-              <span className="font-semibold">{c.s}</span>
-            </div>
-            <div className="mt-1 font-semibold">{c.p}</div>
-            <div className="text-[10px] text-success">+{c.c}</div>
+    <section className="dash-card dash-card--hero">
+      <div className="dash-card-head">
+        <div>
+          <p className="dash-card-kicker">
+            <span className={isLive ? "acc" : ""}>{isLive ? "Live" : "Demo"}</span>
+            <span className="bar" />
+            <span>Market overview</span>
+            {snap.fetchedAt ? (
+              <>
+                <span className="bar" />
+                <span>{formatUpdatedAt(snap.fetchedAt)}</span>
+              </>
+            ) : null}
+          </p>
+          <h2 className="dash-card-title dash-card-title--lg">Total market snapshot</h2>
+        </div>
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+          <div className="dash-range-toggle">
+            {RANGES.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRange(r)}
+                className={`dash-range-btn ${r === range ? "dash-range-btn--active" : ""}`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <Link href="/dashboard/market" className="dash-link hidden sm:inline-flex">
+            Full desk<span className="arr">→</span>
           </Link>
-        ))}
+        </div>
       </div>
-    </div>
+
+      <div className="dash-market-body">
+        <div>
+          <div className="flex items-baseline gap-3">
+            <span className="dash-stat-val" style={{ fontSize: "clamp(28px, 4vw, 40px)" }}>
+              {g ? fmtUsd(g.totalMarketCap, { compact: true }) : "—"}
+            </span>
+            {g ? (
+              <span
+                className="font-mono text-xs font-semibold"
+                style={{ color: chgPositive ? "var(--win)" : "var(--loss, #f87171)" }}
+              >
+                {fmtPct(mcapChg)}
+              </span>
+            ) : null}
+          </div>
+          <p className="dash-stat-lbl">Aggregate market capitalization · BTC trend ({range})</p>
+          {sparkPts ? (
+            <Sparkline pts={sparkPts} />
+          ) : (
+            <div
+              className="mt-6 flex h-24 w-full items-center justify-center border border-[var(--border)] bg-[var(--surface)]/40 font-mono text-[10px] uppercase tracking-wider text-[var(--fg-3)]"
+              aria-hidden={historyLoading}
+            >
+              {historyLoading ? "Loading chart…" : "Chart unavailable"}
+            </div>
+          )}
+        </div>
+
+        <div className="dash-coin-grid">
+          {coins.map((c) => {
+            const up = c.percentChange24h >= 0;
+            return (
+              <Link
+                key={c.symbol}
+                href={`/dashboard/coins/${c.symbol.toLowerCase()}`}
+                className="dash-coin-row"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <CoinLogo id={c.id} symbol={c.symbol} size={20} />
+                    <span className="font-mono text-xs font-semibold tracking-wide">{c.symbol}</span>
+                  </div>
+                  <span
+                    className="font-mono text-[10px]"
+                    style={{ color: up ? "var(--win)" : "var(--loss, #f87171)" }}
+                  >
+                    {fmtPct(c.percentChange24h)}
+                  </span>
+                </div>
+                <div className="mt-2 font-mono text-sm font-semibold tabular-nums">
+                  {fmtUsd(c.price)}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }
 
 function Sparkline({ pts }: { pts: number[] }) {
-  const w = 320;
-  const h = 90;
+  const w = 400;
+  const h = 100;
   const max = Math.max(...pts);
   const min = Math.min(...pts);
   const d = pts
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${(i / (pts.length - 1)) * w} ${h - ((p - min) / (max - min || 1)) * h}`)
+    .map(
+      (p, i) =>
+        `${i === 0 ? "M" : "L"} ${(i / (pts.length - 1)) * w} ${h - ((p - min) / (max - min || 1)) * h}`
+    )
     .join(" ");
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="mt-3 h-24 w-full">
+    <svg viewBox={`0 0 ${w} ${h}`} className="mt-6 h-24 w-full" aria-hidden>
       <defs>
         <linearGradient id="dashboardSparkline" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="oklch(0.72 0.26 305)" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="oklch(0.72 0.26 305)" stopOpacity="0" />
+          <stop offset="0%" stopColor="#9b82dc" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#9b82dc" stopOpacity="0" />
         </linearGradient>
       </defs>
+      {[0.25, 0.5, 0.75].map((y) => (
+        <line
+          key={y}
+          x1={0}
+          y1={h * y}
+          x2={w}
+          y2={h * y}
+          stroke="rgba(255,255,255,0.04)"
+          strokeWidth={1}
+        />
+      ))}
       <path d={`${d} L ${w} ${h} L 0 ${h} Z`} fill="url(#dashboardSparkline)" />
-      <path d={d} fill="none" stroke="oklch(0.72 0.26 305)" strokeWidth="2" />
+      <path d={d} fill="none" stroke="#9b82dc" strokeWidth="1.5" />
     </svg>
   );
 }
 
 function InsightsPanel() {
   const items = [
-    { t: "Bitcoin Macro Trend Shift?", time: "2h ago", tag: "BTC", color: "#f7931a", l: "B", href: "/dashboard/insights" },
-    { t: "Why Altcoins Are Quiet Before The Next Move", time: "5h ago", tag: "ALT", color: "#627eea", l: "A", href: "/dashboard/insights" },
-    { t: "This On-Chain Signal Has Nailed Every Bottom", time: "1d ago", tag: "ON-CHAIN", color: "#14f195", l: "O", href: "/dashboard/insights" },
+    { t: "Bitcoin Macro Trend Shift?", time: "2h ago", tag: "BTC", href: "/dashboard/insights" },
+    { t: "Why Altcoins Are Quiet Before The Next Move", time: "5h ago", tag: "ALT", href: "/dashboard/insights" },
+    { t: "This On-Chain Signal Has Nailed Every Bottom", time: "1d ago", tag: "ON-CHAIN", href: "/dashboard/insights" },
   ];
 
   return (
-    <div className="card-surface p-5">
-      <PanelHead
-        icon={<Zap className="h-4 w-4 text-primary" />}
-        title="Insights"
-        action={<Link href="/dashboard/insights" className="text-xs text-muted-foreground hover:text-foreground">View all</Link>}
-      />
-      <div className="mt-4 space-y-3">
-        {items.map((i) => (
-          <Link key={i.t} href={i.href} className="flex items-start gap-3 rounded-lg border border-border bg-background/40 p-3 transition-colors hover:border-primary/40">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs text-white" style={{ background: i.color }}>
-              {i.l}
+    <div className="dash-card">
+      <div className="dash-card-head" style={{ marginBottom: 16, paddingBottom: 16 }}>
+        <div>
+          <p className="dash-card-kicker">
+            <span className="acc">Briefs</span>
+          </p>
+          <h2 className="dash-card-title">Latest insights</h2>
+        </div>
+        <Link href="/dashboard/insights" className="dash-link">
+          View all<span className="arr">→</span>
+        </Link>
+      </div>
+      <div className="dash-card-body dash-insight-list">
+        {items.map((i, idx) => (
+          <Link key={i.t} href={i.href} className="dash-insight-row group">
+            <span className="dash-insight-num">{String(idx + 1).padStart(2, "0")}</span>
+            <div className="min-w-0">
+              <div className="text-sm font-medium leading-snug text-[var(--fg)] group-hover:text-white">
+                {i.t}
+              </div>
+              <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-[var(--fg-3)]">
+                {i.time}
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold leading-snug">{i.t}</div>
-              <div className="mt-1 text-[10px] text-muted-foreground">{i.time}</div>
-            </div>
-            <span className="rounded bg-secondary px-1.5 py-0.5 text-[9px] font-semibold tracking-wider text-primary">{i.tag}</span>
+            <span className="font-mono text-[9px] font-semibold uppercase tracking-wider text-[var(--accent-soft)]">
+              {i.tag}
+            </span>
           </Link>
         ))}
       </div>
@@ -183,42 +328,64 @@ function InsightsPanel() {
 
 function ArticlesPanel() {
   return (
-    <div className="card-surface p-5">
-      <PanelHead
-        icon={<FileText className="h-4 w-4 text-primary" />}
-        title="Articles"
-        action={<Link href="/dashboard/articles" className="text-xs text-muted-foreground hover:text-foreground">View all</Link>}
-      />
-      <Image src={articleCover} alt="" width={800} height={512} className="mt-4 aspect-video w-full rounded-lg object-cover" />
-      <div className="mt-3 text-sm font-semibold">The Institutions Are Coming to Crypto</div>
-      <div className="mt-1 text-xs text-muted-foreground">A deep dive into how traditional finance is entering the space and what it means for retail investors.</div>
-      <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
-        <span>May 4, 2025</span>
-        <span>|</span>
-        <span>8 min read</span>
+    <div className="dash-card">
+      <div className="dash-card-head" style={{ marginBottom: 16, paddingBottom: 16 }}>
+        <div>
+          <p className="dash-card-kicker">
+            <span className="acc">Research</span>
+          </p>
+          <h2 className="dash-card-title">Featured article</h2>
+        </div>
+        <Link href="/dashboard/articles" className="dash-link">
+          View all<span className="arr">→</span>
+        </Link>
+      </div>
+      <div className="dash-card-body">
+        <Image
+          src={articleCover}
+          alt=""
+          width={800}
+          height={512}
+          className="aspect-[16/10] w-full border border-[var(--border)] object-cover"
+        />
+        <h3 className="mt-4 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-[var(--fg)]">
+          The Institutions Are Coming to Crypto
+        </h3>
+        <p className="mt-2 font-serif text-sm italic leading-relaxed text-[var(--fg-2)]">
+          How traditional finance is entering the space — and what it means for serious beginners.
+        </p>
+        <div className="mt-3 flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-[var(--fg-3)]">
+          <span>May 4, 2025</span>
+          <span>·</span>
+          <span>8 min read</span>
+        </div>
       </div>
     </div>
   );
 }
 
-
 function AffiliatePanel() {
   return (
-    <div className="card-surface p-5">
-      <PanelHead icon={<UserPlus className="h-4 w-4 text-primary" />} title="Affiliate Program" />
-      <div className="mt-2 text-xs text-muted-foreground">Earn lifetime commissions</div>
-      <div className="mt-6 grid grid-cols-2 gap-6">
-        <div>
-          <div className="font-display text-4xl font-extrabold text-primary">30%</div>
-          <div className="mt-1 text-xs text-muted-foreground">Commission Rate</div>
+    <div className="dash-card">
+      <p className="dash-card-kicker">
+        <span className="acc">Referrals</span>
+      </p>
+      <h2 className="dash-card-title">Affiliate program</h2>
+      <p className="mt-2 font-serif text-sm italic text-[var(--fg-2)]">
+        Earn on every member you bring to the desk.
+      </p>
+      <div className="mt-5 grid grid-cols-2 gap-px border border-[var(--border)] bg-[var(--border)]">
+        <div className="bg-[var(--bg-2)] p-4">
+          <div className="dash-stat-val text-[var(--accent-soft)]" style={{ fontSize: 22 }}>30%</div>
+          <div className="dash-stat-lbl">Commission</div>
         </div>
-        <div>
-          <div className="font-display text-4xl font-extrabold">$1,250</div>
-          <div className="mt-1 text-xs text-muted-foreground">Total Earned</div>
+        <div className="bg-[var(--bg-2)] p-4">
+          <div className="dash-stat-val" style={{ fontSize: 22 }}>$1,250</div>
+          <div className="dash-stat-lbl">Earned</div>
         </div>
       </div>
-      <Link href="/dashboard/affiliate" className="mt-6 block w-full rounded-xl border border-border bg-secondary/50 py-3 text-center text-sm font-semibold transition-colors hover:bg-secondary">
-        View Affiliate Dashboard
+      <Link href="/dashboard/affiliate" className="dash-btn-secondary mt-5">
+        Open affiliate desk
       </Link>
     </div>
   );
@@ -226,41 +393,45 @@ function AffiliatePanel() {
 
 function MascotCard() {
   return (
-    <div className="card-surface p-5 text-center">
-      <div className="text-left font-semibold">Insiders Mascot</div>
-      <Image src={heroMascot} alt="Hano mascot" width={1024} height={1024} className="mx-auto mt-3 h-48 w-48 rounded-3xl object-cover" />
-      <p className="mt-3 text-sm text-muted-foreground">"Stay early. Stay sharp. Stay HANO."</p>
+    <div className="dash-card text-center">
+      <p className="dash-card-kicker text-left">
+        <span>Desk note</span>
+      </p>
+      <Image
+        src="/assets/hanoinfrontend/mascot1.png"
+        alt="Hano mascot"
+        width={256}
+        height={256}
+        className="mx-auto mt-5 h-24 w-24 border border-[var(--border)] object-cover"
+      />
+      <p className="dash-rail-quote mt-5 text-left" style={{ border: 0, padding: 0 }}>
+        &ldquo;Stay early. Stay sharp. Stay HANO.&rdquo;
+      </p>
     </div>
   );
 }
 
-
-function SecureBanner() {
+function TrustBar() {
   return (
-    <div className="card-surface flex flex-wrap items-center justify-between gap-6 p-5">
-      <div className="flex items-center gap-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary">
-          <Lock className="h-5 w-5" />
+    <section className="dash-trust-wrap" aria-label="Platform trust metrics">
+      <p className="dash-trust-kicker">
+        <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+        <span>Secure · Private · Built for Insiders</span>
+      </p>
+      <div className="dash-metrics dash-metrics--3">
+        <div className="cell dash-metric-cell">
+          <div className="dash-stat-val" style={{ fontSize: 22 }}>1,250+</div>
+          <div className="dash-stat-lbl">Members</div>
         </div>
-        <div>
-          <div className="font-semibold">Secure. Private. Built for Insiders.</div>
-          <div className="text-xs text-muted-foreground">Your edge in crypto starts here.</div>
+        <div className="cell dash-metric-cell">
+          <div className="dash-stat-val" style={{ fontSize: 22 }}>98%</div>
+          <div className="dash-stat-lbl">Satisfaction</div>
+        </div>
+        <div className="cell dash-metric-cell">
+          <div className="dash-stat-val" style={{ fontSize: 22 }}>24/7</div>
+          <div className="dash-stat-lbl">Support</div>
         </div>
       </div>
-      <div className="flex gap-8">
-        <Stat v="1,250+" l="Members" />
-        <Stat v="98%" l="Satisfaction" />
-        <Stat v="24/7" l="Support" />
-      </div>
-    </div>
-  );
-}
-
-function Stat({ v, l }: { v: string; l: string }) {
-  return (
-    <div className="text-center">
-      <div className="font-display text-xl font-extrabold">{v}</div>
-      <div className="text-[10px] text-muted-foreground">{l}</div>
-    </div>
+    </section>
   );
 }

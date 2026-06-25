@@ -49,7 +49,7 @@ export function ArticlesClient({ initialArticles }: ArticlesClientProps) {
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search articlesâ€¦"
+              placeholder="Search articles…"
               className="flex-1 bg-transparent text-sm focus:outline-none"
             />
           </div>
@@ -99,7 +99,7 @@ export function ArticlesClient({ initialArticles }: ArticlesClientProps) {
                       )}
                     </div>
                     <div className="p-8 lg:p-10 flex flex-col justify-center">
-                      <span className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase">{featured.category || "Article"} Â· FEATURED</span>
+                      <span className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase">{featured.category || "Article"} · FEATURED</span>
                       <h2 className="font-display mt-4 text-3xl leading-tight text-foreground group-hover:text-[oklch(0.78_0.14_85)] transition-colors">{featured.title}</h2>
                       <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{featured.description}</p>
                       <div className="mt-6 flex items-center gap-4 text-xs text-muted-foreground">
@@ -107,7 +107,7 @@ export function ArticlesClient({ initialArticles }: ArticlesClientProps) {
                           <Clock className="h-3 w-3" /> {featured.body ? Math.ceil(featured.body.split(/\s+/).length / 200) : 5} min read
                         </span>
                         {featured.published_at && (
-                          <span>Â· {new Date(featured.published_at).toLocaleDateString()}</span>
+                          <span>· {new Date(featured.published_at).toLocaleDateString()}</span>
                         )}
                       </div>
                       <span className="mt-6 w-fit inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm group-hover:bg-secondary">
@@ -173,7 +173,7 @@ export function ArticlesClient({ initialArticles }: ArticlesClientProps) {
                         )}
 
                         <div className="mt-auto pt-4 flex items-center gap-3 text-[11px] text-muted-foreground">
-                          <Clock className="h-3 w-3" /> {readingTime} min read Â· {a.published_at ? new Date(a.published_at).toLocaleDateString() : "Draft"}
+                          <Clock className="h-3 w-3" /> {readingTime} min read · {a.published_at ? new Date(a.published_at).toLocaleDateString() : "Draft"}
                         </div>
                       </div>
                     </article>

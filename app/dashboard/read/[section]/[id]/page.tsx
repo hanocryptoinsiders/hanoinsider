@@ -42,7 +42,7 @@ export default function ReaderPage({ params }: { params: Promise<{ section: stri
               <span className="text-foreground">{item.author ?? "The Hano Insiders"}</span>
             </span>
             {item.read && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {item.read} read</span>}
-            {(item.date || item.time) && <span>Â· {item.date ?? item.time}</span>}
+            {(item.date || item.time) && <span>· {item.date ?? item.time}</span>}
           </div>
         </div>
         <div className="relative h-64 lg:h-auto rounded-xl overflow-hidden border border-border">

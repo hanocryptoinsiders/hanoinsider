@@ -60,7 +60,7 @@ export default function AffiliateDashboardClient({
 
   // Mask email details for privacy: e.g. "alexander@gmail.com" -> "ale***@gm***.com"
   const maskEmail = (email: string | null): string => {
-    if (!email) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
+    if (!email) return "���a�����";
     const parts = email.split("@");
     if (parts.length !== 2) return "***";
     const [local, domain] = parts;

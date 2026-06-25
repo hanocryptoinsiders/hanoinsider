@@ -1,7 +1,7 @@
 /**
  * app/admin/subscriptions/page.tsx
  *
- * Server Component â€” fetches real subscription data from Supabase.
+ * Server Component — fetches real subscription data from Supabase.
  * Admins only (enforced by parent layout).
  */
 
@@ -66,7 +66,6 @@ async function SubscriptionsDataFetcher() {
     `)
     .order("created_at", { ascending: false })
     .range(0, 99); // Limiting to 100 for performance as requested
-
   const rows: SubscriptionRow[] = (subscriptions ?? []).map((s: Record<string, unknown>) => {
     const profile = s.profiles as Record<string, unknown> | null;
     return {

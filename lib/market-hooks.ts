@@ -11,6 +11,17 @@ export function useMarketSnapshot(initialData?: MarketSnapshot) {
   });
 }
 
+/** Same cache as useMarketSnapshot — gentler refresh for dashboard home. */
+export function useHomeMarketSnapshot(initialData?: MarketSnapshot) {
+  return useQuery<MarketSnapshot>({
+    queryKey: ["market-snapshot"],
+    queryFn: () => getMarketSnapshot(),
+    refetchInterval: 180_000,
+    staleTime: 120_000,
+    initialData,
+  });
+}
+
 async function fetchCoinHistory(symbol: string, timeframe: string): Promise<number[]> {
   const s = symbol.toUpperCase();
   const endpoint = `/api/market/history?symbol=${s}&timeframe=${timeframe}`;
@@ -43,7 +54,7 @@ export function useCoinHistory(symbol: string, timeframe: string, initialData?: 
 }
 
 export function fmtUsd(n: number, opts: { compact?: boolean; digits?: number } = {}) {
-  if (!Number.isFinite(n)) return "â€”";
+  if (!Number.isFinite(n)) return "—";
   const { compact, digits } = opts;
   if (compact) {
     return new Intl.NumberFormat("en-US", {
@@ -63,7 +74,7 @@ export function fmtUsd(n: number, opts: { compact?: boolean; digits?: number } =
 }
 
 export function fmtPct(n: number, digits = 2) {
-  if (!Number.isFinite(n)) return "â€”";
+  if (!Number.isFinite(n)) return "—";
   const s = n >= 0 ? "+" : "";
   return `${s}${n.toFixed(digits)}%`;
 }

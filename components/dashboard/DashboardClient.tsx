@@ -105,19 +105,19 @@ export function DashboardClient({ initialInsights, initialSnap, fngData, heroBan
     .sort((a, b) => b.percentChange24h - a.percentChange24h)
     .slice(0, 3);
   
-  const topNarrative = gainers[0] ? `${gainers[0].symbol}` : "Ã¢â‚¬â€";
-  const topNarrativeChg = gainers[0] ? `+${gainers[0].percentChange24h.toFixed(1)}% 24h` : "Ã¢â‚¬â€";
+  const topNarrative = gainers[0] ? `${gainers[0].symbol}` : "—";
+  const topNarrativeChg = gainers[0] ? `+${gainers[0].percentChange24h.toFixed(1)}% 24h` : "—";
 
-  const totalMcap = g ? fmtUsd(g.totalMarketCap, { compact: true }) : "Ã¢â‚¬â€";
-  const totalMcapChg = g ? fmtPct(g.marketCapChange24h) : "Ã¢â‚¬â€";
+  const totalMcap = g ? fmtUsd(g.totalMarketCap, { compact: true }) : "—";
+  const totalMcapChg = g ? fmtPct(g.marketCapChange24h) : "—";
   const totalMcapPos = (g?.marketCapChange24h ?? 0) >= 0;
-  const btcDom = g ? `${g.btcDominance.toFixed(2)}%` : "Ã¢â‚¬â€";
-  const vol24 = g ? fmtUsd(g.totalVolume24h, { compact: true }) : "Ã¢â‚¬â€";
-  const btcPrice = btc ? fmtUsd(btc.price) : "Ã¢â‚¬â€";
-  const btcChg = btc ? fmtPct(btc.percentChange24h) : "Ã¢â‚¬â€";
+  const btcDom = g ? `${g.btcDominance.toFixed(2)}%` : "—";
+  const vol24 = g ? fmtUsd(g.totalVolume24h, { compact: true }) : "—";
+  const btcPrice = btc ? fmtUsd(btc.price) : "—";
+  const btcChg = btc ? fmtPct(btc.percentChange24h) : "—";
   const btcPos = (btc?.percentChange24h ?? 0) >= 0;
-  const btcMcap = btc ? fmtUsd(btc.marketCap, { compact: true }) : "Ã¢â‚¬â€";
-  const btcVol = btc ? fmtUsd(btc.volume24h, { compact: true }) : "Ã¢â‚¬â€";
+  const btcMcap = btc ? fmtUsd(btc.marketCap, { compact: true }) : "—";
+  const btcVol = btc ? fmtUsd(btc.volume24h, { compact: true }) : "—";
 
   const btcTrendStr = btcPos ? "Bullish" : "Bearish";
   const ethTrendStr = (eth?.percentChange24h ?? 0) >= 0 ? "Bullish" : "Bearish";
@@ -140,7 +140,7 @@ export function DashboardClient({ initialInsights, initialSnap, fngData, heroBan
             <DashboardChart height={64} points={mcapPoints || []} isUp={totalMcapPos} />
           </div>
           <div className="relative grid grid-cols-3 gap-3 border-t border-border pt-4">
-            {[{ l: "BTC DOMINANCE", v: btcDom, c: g ? fmtPct(g.btcDominance - 50, 2) : "Ã¢â‚¬â€", pos: true },{ l: "ETH DOMINANCE", v: g ? `${g.ethDominance.toFixed(2)}%` : "Ã¢â‚¬â€", c: "", pos: true },{ l: "24H VOLUME", v: vol24, c: "", pos: true }].map((m) => (
+            {[{ l: "BTC DOMINANCE", v: btcDom, c: g ? fmtPct(g.btcDominance - 50, 2) : "—", pos: true },{ l: "ETH DOMINANCE", v: g ? `${g.ethDominance.toFixed(2)}%` : "—", c: "", pos: true },{ l: "24H VOLUME", v: vol24, c: "", pos: true }].map((m) => (
               <div key={m.l}>
                 <p className="text-[9px] tracking-wider text-muted-foreground">{m.l}</p>
                 <p className="font-semibold tracking-tight mt-1 text-xl">{m.v}</p>
@@ -172,14 +172,14 @@ export function DashboardClient({ initialInsights, initialSnap, fngData, heroBan
       </div>
 
 
-      {/* Latest MARKET UPDATE Ã¢â‚¬â€ pinned */}
+      {/* Latest MARKET UPDATE — pinned */}
       {initialInsights[0] && (
         <section className="panel-elevated relative overflow-hidden p-6 sm:p-8 border border-foreground/20">
           <div className="absolute right-4 top-4 sm:right-6 sm:top-6 flex items-center justify-center h-8 w-8 rounded-full border border-border bg-secondary/40 text-[oklch(0.78_0.14_85)] shadow-sm">
             <Pin className="h-4 w-4 fill-current shrink-0" />
           </div>
           <p className="text-[11px] tracking-[0.3em] text-[oklch(0.78_0.14_85)]">
-            MARKET UPDATE Ã‚Â· {initialInsights[0].published_at ? new Date(initialInsights[0].published_at).toLocaleDateString() : "Just now"}
+            MARKET UPDATE · {initialInsights[0].published_at ? new Date(initialInsights[0].published_at).toLocaleDateString() : "Just now"}
           </p>
           <h2 className="font-display mt-3 text-2xl sm:text-3xl max-w-3xl leading-tight pr-10 sm:pr-0">
             {initialInsights[0].title}
@@ -189,7 +189,7 @@ export function DashboardClient({ initialInsights, initialSnap, fngData, heroBan
             <Link href={`/dashboard/insights/${initialInsights[0].slug}`} className="inline-flex items-center gap-2 rounded-lg bg-foreground text-background px-4 py-2 text-xs font-medium">
               Read full insight <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-            <span className="text-[11px] text-muted-foreground">By The Hano Insiders Ã‚Â· {initialInsights[0].body ? Math.ceil(initialInsights[0].body.split(/\s+/).length / 200) : 1} min read</span>
+            <span className="text-[11px] text-muted-foreground">By The Hano Insiders · {initialInsights[0].body ? Math.ceil(initialInsights[0].body.split(/\s+/).length / 200) : 1} min read</span>
           </div>
         </section>
       )}
@@ -203,8 +203,8 @@ export function DashboardClient({ initialInsights, initialSnap, fngData, heroBan
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { icon: TrendingUp, l: "BTC TREND", v: btcTrendStr, c: btcChg, pos: btcPos },
-            { icon: TrendingDown, l: "ETH TREND", v: ethTrendStr, c: eth ? fmtPct(eth.percentChange24h) : "Ã¢â‚¬â€", pos: (eth?.percentChange24h ?? 0) >= 0 },
-            { icon: Activity, l: "FEAR & GREED", v: fngData ? `${fngData.value} Ã‚Â· ${fngData.value_classification}` : "Ã¢â‚¬â€", c: "Live", pos: Number(fngData?.value ?? 50) > 50 },
+            { icon: TrendingDown, l: "ETH TREND", v: ethTrendStr, c: eth ? fmtPct(eth.percentChange24h) : "—", pos: (eth?.percentChange24h ?? 0) >= 0 },
+            { icon: Activity, l: "FEAR & GREED", v: fngData ? `${fngData.value} · ${fngData.value_classification}` : "—", c: "Live", pos: Number(fngData?.value ?? 50) > 50 },
             { icon: TrendingUp, l: "TOP GAINER", v: topNarrative, c: topNarrativeChg, pos: true },
           ].map((s) => {
             const Icon = s.icon;
@@ -226,7 +226,7 @@ export function DashboardClient({ initialInsights, initialSnap, fngData, heroBan
         <section className="panel p-4 sm:p-6">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-[#f7931a] flex items-center justify-center text-background font-bold">Ã¢â€šÂ¿</div>
+              <div className="h-9 w-9 rounded-full bg-[#f7931a] flex items-center justify-center text-background font-bold">₿</div>
               <div>
                 <p className="font-medium">BITCOIN / USD</p>
                 <p className="text-[10px] tracking-wider text-muted-foreground">BTC</p>
@@ -257,7 +257,7 @@ export function DashboardClient({ initialInsights, initialSnap, fngData, heroBan
             {isFree && <LockOverlay label="Advanced charts locked" onUpgrade={upgrade} />}
           </div>
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-border pt-4">
-            {[{ l: "Market Cap", v: btcMcap },{ l: "24H Volume", v: btcVol },{ l: "1H Change", v: btc ? fmtPct(btc.percentChange1h) : "Ã¢â‚¬â€" },{ l: "Dominance", v: btcDom }].map((s) => (
+            {[{ l: "Market Cap", v: btcMcap },{ l: "24H Volume", v: btcVol },{ l: "1H Change", v: btc ? fmtPct(btc.percentChange1h) : "—" },{ l: "Dominance", v: btcDom }].map((s) => (
               <div key={s.l}>
                 <p className="text-[10px] tracking-wider text-muted-foreground">{s.l}</p>
                 <p className="font-semibold tracking-tight mt-1 text-lg">{s.v}</p>
@@ -315,7 +315,7 @@ export function DashboardClient({ initialInsights, initialSnap, fngData, heroBan
               {quote.text}
             </blockquote>
             <p className="mt-4 sm:mt-6 pl-5 sm:pl-8 text-xs sm:text-sm text-muted-foreground tracking-wider">
-              Ã¢â‚¬â€ {quote.author}
+              — {quote.author}
             </p>
           </div>
           <div className="relative h-[160px] sm:h-auto sm:min-h-[180px] overflow-hidden border-t sm:border-t-0 sm:border-l border-border">

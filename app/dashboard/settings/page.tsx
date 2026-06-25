@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
+import { PageHeader } from "@/components/dashboard/DashboardLayout";
 
 // Client-side User Agent parser
 function parseUserAgent(ua: string): { browser: string; os: string } {

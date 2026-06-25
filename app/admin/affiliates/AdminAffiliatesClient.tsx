@@ -339,10 +339,11 @@ export default function AdminAffiliatesClient({
 
   // Filtering Logic
   const filteredAffiliates = affiliates.filter((a) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.referral_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (a.email || "").toLowerCase().includes(searchQuery.toLowerCase());
+      (a.name || "").toLowerCase().includes(q) ||
+      (a.referral_code || "").toLowerCase().includes(q) ||
+      (a.email || "").toLowerCase().includes(q);
     const matchesStatus =
       affiliateStatusFilter === "all" || a.status === affiliateStatusFilter;
     return matchesSearch && matchesStatus;
@@ -360,15 +361,16 @@ export default function AdminAffiliatesClient({
   });
 
   const filteredPayouts = payouts.filter((p) => {
+    const q = searchQuery.toLowerCase();
     return (
-      p.affiliate_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.affiliate_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.payout_reference || "").toLowerCase().includes(searchQuery.toLowerCase())
+      (p.affiliate_name || "").toLowerCase().includes(q) ||
+      (p.affiliate_code || "").toLowerCase().includes(q) ||
+      (p.payout_reference || "").toLowerCase().includes(q)
     );
   });
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "Ã¢â‚¬â€";
+    if (!dateStr) return "���";
     return new Date(dateStr).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -518,7 +520,7 @@ export default function AdminAffiliatesClient({
                         {a.user_name ? (
                           <span title={a.user_email || ""}>{a.user_name}</span>
                         ) : (
-                          <span className="text-muted-foreground/40">Ã¢â‚¬â€</span>
+                          <span className="text-muted-foreground/40">���</span>
                         )}
                       </td>
                       <td className="py-3.5">{stats.clicks.toLocaleString()}</td>
@@ -807,7 +809,7 @@ export default function AdminAffiliatesClient({
                       </span>
                     </td>
                     <td className="py-3.5 text-xs text-muted-foreground text-right max-w-[200px] truncate" title={p.notes || ""}>
-                      {p.notes || "Ã¢â‚¬â€"}
+                      {p.notes || "���"}
                     </td>
                   </tr>
                 ))

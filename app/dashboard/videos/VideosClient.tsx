@@ -59,7 +59,7 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
                   <div className="absolute bottom-6 left-6 right-6">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase">
-                        FEATURED Â· {featured.category || "MARKET REVIEW"}
+                        FEATURED · {featured.category || "MARKET REVIEW"}
                       </span>
                       {featured.is_premium && (
                         <span className="flex items-center gap-1 rounded bg-foreground text-background px-1.5 py-0.5 text-[9px] font-bold">
@@ -150,7 +150,7 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
                       )}
 
                       <p className="mt-auto pt-3.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <Clock className="h-3 w-3" /> {getDuration(v)} <span className="opacity-50">Â·</span> {v.published_at ? new Date(v.published_at).toLocaleDateString() : "Draft"}
+                        <Clock className="h-3 w-3" /> {getDuration(v)} <span className="opacity-50">·</span> {v.published_at ? new Date(v.published_at).toLocaleDateString() : "Draft"}
                       </p>
                     </div>
                   </article>

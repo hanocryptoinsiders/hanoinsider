@@ -23,7 +23,7 @@ export interface ContentItem {
   updated_at: string;
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Helpers ������������������������������������������������������������������������������������������������������������������
 
 export async function isPremiumUser(): Promise<boolean> {
   const profile = await getCurrentProfile();
@@ -40,7 +40,7 @@ export async function canViewFullContent(item: { is_premium: boolean }): Promise
   return await isPremiumUser();
 }
 
-// â”€â”€â”€ Queries (Readable by users/admins based on status) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Queries (Readable by users/admins based on status) ����������������������������
 
 /**
  * Fetches content items list.
@@ -105,7 +105,7 @@ export async function getContentBySlug(slug: string, adminMode = false): Promise
   }
 }
 
-// â”€â”€â”€ Mutation Server Actions (Strict Admin Only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Mutation Server Actions (Strict Admin Only) ����������������������������������������������
 
 export async function createContentItem(data: Omit<ContentItem, "id" | "created_at" | "updated_at">): Promise<ContentItem> {
   const { user } = await requireAdmin();

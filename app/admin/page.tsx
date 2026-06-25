@@ -1,34 +1,49 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { Users, FileText, DollarSign, Eye, TrendingUp, Gift, ShoppingCart, Activity, ShieldAlert, CreditCard, MessageSquare, Video } from "lucide-react";
-import { PageHeader } from "@/components/dashboard/DashboardLayout";
+import { Users, FileText, Eye, Gift, CreditCard, MessageSquare, Video, Activity } from "lucide-react";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 
-export const revalidate = 0; // Disable server component cache for real-time dashboard stats
+export const revalidate = 0;
 
 export default function AdminHome() {
   return (
     <>
-      <PageHeader kicker="ADMIN OVERVIEW" title="Platform health, at a glance." />
-
       <Suspense fallback={<AdminKPISkeleton />}>
         <AdminKPIs />
       </Suspense>
 
-      <section className="panel p-6 mt-5">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+      <section className="dash-card dash-card--hero">
+        <div className="dash-card-head" style={{ marginBottom: 20, paddingBottom: 20 }}>
           <div>
-            <p className="text-[11px] tracking-[0.2em] text-muted-foreground">REVENUE Â· LAST 30D</p>
-            <p className="font-display text-4xl mt-2">$48,210</p>
-            <p className="text-success text-xs">+8.4% vs prev. period</p>
+            <p className="dash-card-kicker">
+              <span className="acc">Revenue</span>
+              <span className="bar" />
+              <span>Last 30d</span>
+            </p>
+            <h2 className="dash-card-title dash-card-title--lg">$48,210</h2>
+            <p className="dash-admin-kpi-note dash-admin-kpi-note--up" style={{ marginTop: 8 }}>
+              +8.4% vs previous period
+            </p>
           </div>
-          <div className="flex gap-1 text-xs text-muted-foreground">
+          <div className="dash-range-toggle">
             {["7D", "30D", "90D", "1Y"].map((t) => (
-              <button key={t} className={`px-2.5 py-1 rounded ${t === "30D" ? "bg-accent text-foreground" : "hover:text-foreground"}`}>{t}</button>
+              <button
+                key={t}
+                type="button"
+                className={`dash-range-btn ${t === "30D" ? "dash-range-btn--active" : ""}`}
+              >
+                {t}
+              </button>
             ))}
           </div>
         </div>
-        <Sparkline height={180} points={[20,24,22,28,26,32,30,38,34,42,40,48,44,52,50,58,55,62,60,68,65,72,70,78,75,82,80,88,85,92]} stroke="oklch(0.92 0 0)" fill="oklch(0.92 0 0)" className="mt-4" />
+        <Sparkline
+          height={180}
+          points={[20, 24, 22, 28, 26, 32, 30, 38, 34, 42, 40, 48, 44, 52, 50, 58, 55, 62, 60, 68, 65, 72, 70, 78, 75, 82, 80, 88, 85, 92]}
+          stroke="#9b82dc"
+          fill="#9b82dc"
+          className="w-full"
+        />
       </section>
     </>
   );
@@ -36,14 +51,14 @@ export default function AdminHome() {
 
 function AdminKPISkeleton() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-5 animate-pulse">
+    <div className="dash-admin-kpi-grid animate-pulse">
       {Array.from({ length: 9 }).map((_, i) => (
-        <div key={i} className="panel p-6">
-          <div className="h-4 w-4 bg-muted rounded mb-3"></div>
-          <div className="h-2.5 w-24 bg-muted rounded mb-2"></div>
-          <div className="h-8 w-16 bg-muted rounded mb-1"></div>
-          <div className="h-3 w-32 bg-muted rounded mb-3"></div>
-          <div className="h-7 w-full bg-muted rounded"></div>
+        <div key={i} className="dash-admin-kpi">
+          <div className="h-4 w-4 rounded bg-white/5" />
+          <div className="h-2.5 w-24 rounded bg-white/5" />
+          <div className="h-8 w-16 rounded bg-white/5" />
+          <div className="h-3 w-32 rounded bg-white/5" />
+          <div className="h-7 w-full rounded bg-white/5" />
         </div>
       ))}
     </div>
@@ -53,7 +68,7 @@ function AdminKPISkeleton() {
 async function AdminKPIs() {
   const supabase = await createClient();
 
-  // Safe query count helper
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const runCount = async (query: any) => {
     try {
       const { count, error } = await query;
@@ -68,7 +83,6 @@ async function AdminKPIs() {
     }
   };
 
-  // Fetch real counts from all tables in parallel
   const [
     totalUsers,
     premiumUsers,
@@ -92,28 +106,30 @@ async function AdminKPIs() {
   ]);
 
   const kpis = [
-    { label: "Total Users", value: totalUsers.toLocaleString(), change: "All registrations", icon: Users, up: true },
-    { label: "Premium Users", value: premiumUsers.toLocaleString(), change: "PRO & Member members", icon: Eye, up: true },
-    { label: "Free Users", value: freeUsers.toLocaleString(), change: "Standard members", icon: Activity, up: true },
-    { label: "Active Subscriptions", value: activeSubs.toLocaleString(), change: "Live subscriptions", icon: CreditCard, up: true },
-    { label: "Published Insights", value: publishedInsights.toLocaleString(), change: "Insights in feed", icon: FileText, up: true },
-    { label: "Published Articles", value: publishedArticles.toLocaleString(), change: "Educational guides", icon: FileText, up: true },
-    { label: "Published Videos", value: publishedVideos.toLocaleString(), change: "Uploaded video guides", icon: Video, up: true },
-    { label: "Total Affiliates", value: totalAffiliates.toLocaleString(), change: "Referral partners", icon: Gift, up: true },
-    { label: "Total Comments", value: totalComments.toLocaleString(), change: "Community comments", icon: MessageSquare, up: true },
+    { label: "Total users", value: totalUsers.toLocaleString(), change: "All registrations", icon: Users, up: true },
+    { label: "Premium users", value: premiumUsers.toLocaleString(), change: "Pro & member access", icon: Eye, up: true },
+    { label: "Free users", value: freeUsers.toLocaleString(), change: "Standard members", icon: Activity, up: true },
+    { label: "Active subscriptions", value: activeSubs.toLocaleString(), change: "Live subscriptions", icon: CreditCard, up: true },
+    { label: "Published insights", value: publishedInsights.toLocaleString(), change: "Insights in feed", icon: FileText, up: true },
+    { label: "Published articles", value: publishedArticles.toLocaleString(), change: "Educational guides", icon: FileText, up: true },
+    { label: "Published videos", value: publishedVideos.toLocaleString(), change: "Uploaded video guides", icon: Video, up: true },
+    { label: "Total affiliates", value: totalAffiliates.toLocaleString(), change: "Referral partners", icon: Gift, up: true },
+    { label: "Total comments", value: totalComments.toLocaleString(), change: "Community comments", icon: MessageSquare, up: true },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
+    <div className="dash-admin-kpi-grid">
       {kpis.map((k) => {
         const Icon = k.icon;
         return (
-          <div key={k.label} className="panel p-6 animate-fade-in">
-            <Icon className="h-4 w-4 text-muted-foreground" />
-            <p className="text-[10px] tracking-wider text-muted-foreground mt-3 uppercase">{k.label}</p>
-            <p className="font-display mt-2 text-3xl">{k.value}</p>
-            <p className={`text-xs mt-1 ${k.up ? "text-success" : "text-destructive"}`}>{k.change}</p>
-            <Sparkline height={28} stroke="oklch(0.78 0.18 150)" fill="oklch(0.78 0.18 150)" className="mt-3" />
+          <div key={k.label} className="dash-admin-kpi animate-fade-in">
+            <Icon className="dash-admin-kpi-icon" strokeWidth={1.5} />
+            <div className="dash-stat-lbl">{k.label}</div>
+            <div className="dash-stat-val">{k.value}</div>
+            <p className={`dash-admin-kpi-note ${k.up ? "dash-admin-kpi-note--up" : "dash-admin-kpi-note--down"}`}>
+              {k.change}
+            </p>
+            <Sparkline height={28} stroke="#9b82dc" fill="#9b82dc" className="mt-1" />
           </div>
         );
       })}

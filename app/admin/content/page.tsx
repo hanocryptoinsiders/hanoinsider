@@ -86,7 +86,7 @@ export default function AdminContent() {
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // â”€â”€â”€ Data Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ Data Loading ��������������������������������������������������������������������������������������������������������������������
 
   const loadItems = async () => {
     setIsLoading(true);
@@ -104,7 +104,7 @@ export default function AdminContent() {
     loadItems();
   }, []);
 
-  // â”€â”€â”€ Slug Generator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ Slug Generator ����������������������������������������������������������������������������������������������������������������
 
   const generateSlug = (title: string) =>
     title
@@ -122,7 +122,7 @@ export default function AdminContent() {
     }));
   };
 
-  // â”€â”€â”€ Markdown Toolbar Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ Markdown Toolbar Helpers ��������������������������������������������������������������������������������������������
 
   const wrap = (before: string, after = before, placeholder = "text") => {
     const el = textareaRef.current;
@@ -193,7 +193,7 @@ export default function AdminContent() {
     { Icon: Minus, label: "Divider", fn: () => insertBlock("---") },
   ];
 
-  // â”€â”€â”€ Form Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ Form Actions ��������������������������������������������������������������������������������������������������������������������
 
   const handleSave = (targetStatus: "draft" | "published" | "archived") => {
     if (!draft.title.trim()) {
@@ -319,7 +319,7 @@ export default function AdminContent() {
     setPreview(false);
   };
 
-  // â”€â”€â”€ Filtering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ Filtering ��������������������������������������������������������������������������������������������������������������������������
 
   const filtered = content.filter((c) => {
     if (filter === "All") return true;
@@ -331,7 +331,7 @@ export default function AdminContent() {
     return c.status === filter;
   });
 
-  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ Render ��������������������������������������������������������������������������������������������������������������������������������
 
   const filterLabels: Record<FilterKey, string> = {
     All: "All",
@@ -349,7 +349,7 @@ export default function AdminContent() {
     <>
       <PageHeader kicker="CONTENT CMS" title="Manage insights, articles & videos." />
 
-      {/* â”€â”€ Controls Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ���� Controls Bar ���������������������������������������������������������������������������������������������� */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex gap-1.5 flex-wrap">
           {(Object.keys(filterLabels) as FilterKey[]).map((s) => (
@@ -389,7 +389,7 @@ export default function AdminContent() {
         </button>
       </div>
 
-      {/* â”€â”€ Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ���� Editor ���������������������������������������������������������������������������������������������������������� */}
       {open && (
         <section className="panel-elevated p-0 overflow-hidden border border-border/80 shadow-2xl">
           {/* Editor Header */}
@@ -458,7 +458,7 @@ export default function AdminContent() {
                     />
                     {draft.slug && (
                       <p className="mt-1 text-[10px] text-muted-foreground/60 font-mono">
-                        â†’ /dashboard/{draft.type}s/{draft.slug}
+                        � /dashboard/{draft.type}s/{draft.slug}
                       </p>
                     )}
                   </div>
@@ -491,7 +491,7 @@ export default function AdminContent() {
                         </button>
                       ))}
                       <span className="ml-2 hidden md:inline text-[10px] text-muted-foreground/60">
-                        Markdown Â· **bold** *italic* ==highlight==
+                        Markdown � **bold** *italic* ==highlight==
                       </span>
                     </div>
                   </div>
@@ -509,7 +509,7 @@ export default function AdminContent() {
                       className="w-full rounded-lg border border-border bg-background/40 px-4 py-3 text-sm font-mono leading-relaxed focus:outline-none focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10 resize-y"
                     />
                     <p className="mt-1 text-[10px] text-muted-foreground/50 font-mono">
-                      {draft.body.split(/\s+/).filter(Boolean).length} words Â·{" "}
+                      {draft.body.split(/\s+/).filter(Boolean).length} words �{" "}
                       {Math.ceil(draft.body.split(/\s+/).filter(Boolean).length / 200)} min read
                     </p>
                   </div>
@@ -529,7 +529,7 @@ export default function AdminContent() {
                     <span className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase">
                       {draft.category}
                     </span>
-                    <span className="text-muted-foreground/40">â€¢</span>
+                    <span className="text-muted-foreground/40">"</span>
                     <span className="text-[10px] rounded bg-secondary px-2 py-0.5 font-semibold text-foreground uppercase">
                       {draft.type}
                     </span>
@@ -651,7 +651,7 @@ export default function AdminContent() {
                 />
               </div>
 
-              {/* Video URL â€” only for video type */}
+              {/* Video URL  only for video type */}
               {draft.type === "video" && (
                 <div>
                   <p className="text-[10px] tracking-wider text-muted-foreground font-mono">
@@ -733,7 +733,7 @@ export default function AdminContent() {
         </section>
       )}
 
-      {/* â”€â”€ Content Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ���� Content Table ���������������������������������������������������������������������������������������������� */}
       {isLoading ? (
         <div className="panel p-12 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
           <div className="animate-spin rounded-full h-6 w-6 border-2 border-muted border-t-foreground" />
@@ -839,18 +839,18 @@ export default function AdminContent() {
 
                     {/* Category */}
                     <td className="px-5 py-3.5 text-xs text-muted-foreground">
-                      {c.category || "â€”"}
+                      {c.category || ""}
                     </td>
 
                     {/* Published Date */}
                     <td className="px-5 py-3.5 text-xs font-mono text-muted-foreground">
-                      {c.published_at ? new Date(c.published_at).toLocaleDateString() : "â€”"}
+                      {c.published_at ? new Date(c.published_at).toLocaleDateString() : ""}
                     </td>
 
                     {/* Actions */}
                     <td className="px-5 py-3.5 text-right">
                       <div className="flex justify-end items-center gap-1">
-                        {/* Publish (draft or archived â†’ publish) */}
+                        {/* Publish (draft or archived � publish) */}
                         {c.status !== "published" && (
                           <button
                             onClick={() => handleQuickPublish(c.id, c.content_type)}
@@ -861,7 +861,7 @@ export default function AdminContent() {
                           </button>
                         )}
 
-                        {/* Archive (published â†’ archive) */}
+                        {/* Archive (published � archive) */}
                         {c.status === "published" && (
                           <button
                             onClick={() => handleQuickArchive(c.id, c.content_type)}

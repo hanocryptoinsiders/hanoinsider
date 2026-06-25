@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import { Search, ChevronDown, Home, TrendingUp, Zap, FileText, UserPlus, Settings, Menu, Shield, Headphones, Crown, LogOut } from "lucide-react";
+import {
+  Search,
+  Home,
+  TrendingUp,
+  Zap,
+  FileText,
+  UserPlus,
+  Settings,
+  Menu,
+  Shield,
+  Headphones,
+  LogOut,
+} from "lucide-react";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { TierProvider } from "@/lib/tier-context";
 import { useAuth } from "@/lib/auth-context";
@@ -21,15 +33,28 @@ type NavItem = {
   badge?: string;
 };
 
-const nav: NavItem[] = [
+const deskNav: NavItem[] = [
   { to: "/dashboard", icon: Home, label: "Dashboard", exact: true },
-  { to: "/dashboard/market", icon: TrendingUp, label: "Market Overview" },
+  { to: "/dashboard/market", icon: TrendingUp, label: "Market" },
   { to: "/dashboard/insights", icon: Zap, label: "Insights", badge: "New" },
   { to: "/dashboard/articles", icon: FileText, label: "Articles" },
+];
+
+const memberNav: NavItem[] = [
   { to: "/dashboard/affiliate", icon: UserPlus, label: "Affiliate" },
   { to: "/dashboard/support", icon: Headphones, label: "Support" },
   { to: "/dashboard/settings", icon: Settings, label: "Settings" },
 ];
+
+const PAGE_META: Record<string, { title: string; sub?: string }> = {
+  "/dashboard": { title: "Dashboard", sub: "Your intelligence desk, at a glance." },
+  "/dashboard/market": { title: "Market Overview", sub: "Live context across the category." },
+  "/dashboard/insights": { title: "Insights", sub: "Educational briefs from the desk." },
+  "/dashboard/articles": { title: "Articles", sub: "Short-form market analysis." },
+  "/dashboard/affiliate": { title: "Affiliate", sub: "Referrals and commission tracking." },
+  "/dashboard/support": { title: "Support", sub: "Member help and billing." },
+  "/dashboard/settings": { title: "Settings", sub: "Account and preferences." },
+};
 
 const mascotAvatar = "/assets/hanoinfrontend/hero-mascot.jpg";
 
@@ -38,11 +63,22 @@ function getDisplayName(fullName?: string | null, email?: string | null) {
 }
 
 function getAccessLabel(role?: string | null, isPremium?: boolean) {
-  if (role === "admin") {
-    return "Admin Access";
-  }
+  if (role === "admin") return "Admin";
+  return isPremium ? "Premium" : "Member";
+}
 
-  return isPremium ? "Premium Member" : "Member Access";
+function getPageMeta(pathname: string) {
+  if (PAGE_META[pathname]) return PAGE_META[pathname];
+  if (pathname.startsWith("/dashboard/coins/")) {
+    return { title: "Coin Profile", sub: "Asset context and market data." };
+  }
+  if (pathname.startsWith("/dashboard/insights/")) {
+    return { title: "Insight", sub: "Reading from the desk archive." };
+  }
+  if (pathname.startsWith("/dashboard/articles/")) {
+    return { title: "Article", sub: "Reading from the desk archive." };
+  }
+  return { title: "Dashboard", sub: "Your intelligence desk." };
 }
 
 function ProfileAvatar({
@@ -58,7 +94,9 @@ function ProfileAvatar({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-full border border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.18),_transparent_52%),linear-gradient(145deg,rgba(148,66,255,0.22),rgba(8,8,16,0.92))] ${aura ? "avatar-premium-glow" : "shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"} ${className}`}
+      className={`overflow-hidden rounded-full border bg-[var(--surface)] ${
+        aura ? "avatar-premium-glow border-[rgba(155,130,220,0.4)]" : "border-[var(--border-2)]"
+      } ${className}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} referrerPolicy="no-referrer" alt={alt} className="h-full w-full object-cover" />
@@ -66,63 +104,83 @@ function ProfileAvatar({
   );
 }
 
+function NavGroup({
+  label,
+  items,
+  pathname,
+  onNavigate,
+  compact,
+}: {
+  label: string;
+  items: NavItem[];
+  pathname: string;
+  onNavigate?: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className="dash-nav-group">
+      {!compact ? <p className="dash-nav-group-label">{label}</p> : null}
+      {items.map((item) => {
+        const Icon = item.icon;
+        const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+        return (
+          <Link
+            key={item.to}
+            href={item.to}
+            onClick={() => onNavigate?.()}
+            className={`dash-nav-link ${active ? "dash-nav-link--active" : ""}`}
+          >
+            <span className="flex items-center gap-3">
+              <Icon className="dash-nav-icon" strokeWidth={1.5} />
+              {!compact ? item.label : null}
+            </span>
+            {!compact && item.badge ? <span className="dash-nav-badge">{item.badge}</span> : null}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function SidebarContent({ onNavigate, compact = false }: { onNavigate?: () => void; compact?: boolean }) {
   const pathname = usePathname();
-  const { role, isPremium } = useAuth();
+  const { role, isPremium, profile, user } = useAuth();
   const hasMemberAura = role === "admin" || isPremium;
   const accessLabel = getAccessLabel(role, isPremium);
+  const displayName = getDisplayName(profile?.full_name, user?.email);
 
-  const navItems = [...nav];
-  if (role === "admin") {
-    navItems.push({ to: "/admin", icon: Shield, label: "Admin Panel" });
-  }
+  const adminNav: NavItem[] =
+    role === "admin" ? [{ to: "/admin", icon: Shield, label: "Admin Panel" }] : [];
 
   return (
-    <div className="flex h-full flex-col bg-[radial-gradient(circle_at_top,_rgba(152,77,255,0.1),_transparent_32%),linear-gradient(180deg,rgba(5,5,10,0.72),rgba(10,10,18,0.96))]">
-      <div className="flex items-center justify-between p-5">
-        <Link href="/dashboard" onClick={onNavigate} className="block">
-          <HanoWordmark compact={compact} />
-        </Link>
+    <div className="dash-sidebar flex h-full flex-col">
+      <div className="flex items-center border-b border-[var(--border)] px-4 py-4">
+        <HanoWordmark href="/dashboard" compact={compact} />
       </div>
 
-      <nav className="flex-1 space-y-2 px-3">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
-          return (
-            <Link
-              key={item.to}
-              href={item.to}
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate();
-                }
-              }}
-              className={`group flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm transition-all duration-200 ${active ? "bg-[linear-gradient(135deg,rgba(124,58,237,0.92),rgba(91,33,182,0.82))] text-foreground shadow-[0_18px_40px_-24px_rgba(168,85,247,0.9)] ring-1 ring-violet-300/25" : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground"}`}
-            >
-              <span className="flex items-center gap-3">
-                <Icon className={`h-4 w-4 ${active ? "text-white" : ""}`} strokeWidth={1.6} />
-                {!compact ? item.label : null}
-              </span>
-              {!compact && "badge" in item && item.badge ? (
-                <span className="rounded-md bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">{item.badge}</span>
-              ) : null}
-            </Link>
-          );
-        })}
+      <nav className="dash-sidebar-nav scrollbar-hide flex-1 overflow-y-auto py-5">
+        <NavGroup label="Desk" items={deskNav} pathname={pathname} onNavigate={onNavigate} compact={compact} />
+        <NavGroup label="Member" items={[...memberNav, ...adminNav]} pathname={pathname} onNavigate={onNavigate} compact={compact} />
       </nav>
 
-
-
-      <div className="mt-auto border-t border-white/6 p-4">
-        <div className={`flex items-center gap-3 rounded-[1.15rem] border px-3 py-3 ${hasMemberAura ? "border-primary/25 bg-primary/[0.08] shadow-[0_24px_60px_-34px_rgba(168,85,247,0.82)]" : "border-white/8 bg-white/[0.03]"}`}>
-          <ProfileAvatar src={mascotAvatar} alt="" className="h-10 w-10 shrink-0" aura={hasMemberAura} />
-          {!compact ? (
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold">Hano Insider</div>
-              <div className="text-[10px] text-muted-foreground">{accessLabel}</div>
-            </div>
-          ) : null}
+      <div className="border-t border-[var(--border)] p-4">
+        <div className={`dash-member-card ${hasMemberAura ? "dash-member-card--premium" : ""}`}>
+          <div className="flex items-center gap-3">
+            <ProfileAvatar
+              src={profile?.avatar_url || mascotAvatar}
+              alt={displayName}
+              className="h-10 w-10 shrink-0"
+              aura={hasMemberAura}
+            />
+            {!compact ? (
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-[var(--fg)]">{displayName}</div>
+                <div className="font-mono-label text-[var(--accent-soft)]" style={{ marginTop: 4 }}>
+                  {accessLabel} access
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
@@ -130,6 +188,7 @@ function SidebarContent({ onNavigate, compact = false }: { onNavigate?: () => vo
 }
 
 function Shell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const { profile, role, signOut, user, isPremium } = useAuth();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -137,6 +196,7 @@ function Shell({ children }: { children: ReactNode }) {
   const displayName = getDisplayName(profile?.full_name, user?.email);
   const accessLabel = getAccessLabel(role, isPremium);
   const hasMemberAura = role === "admin" || isPremium;
+  const pageMeta = getPageMeta(pathname);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -144,54 +204,51 @@ function Shell({ children }: { children: ReactNode }) {
         setProfileOpen(false);
       }
     }
-
     if (profileOpen) {
       document.addEventListener("mousedown", handlePointerDown);
     }
-
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [profileOpen]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground bg-noise">
+    <div className="dash-shell">
       <RouteProgress />
-      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-[16%] top-[-8rem] h-72 w-72 rounded-full bg-primary/12 blur-3xl" />
-        <div className="absolute bottom-[-9rem] right-[10%] h-80 w-80 rounded-full bg-fuchsia-500/10 blur-3xl" />
-      </div>
-      <div className="relative flex min-h-screen">
-        <aside className="sticky top-0 hidden h-screen w-[268px] shrink-0 border-r border-white/6 bg-black/20 backdrop-blur-2xl md:block">
+      <div className="dash-frame flex min-h-screen">
+        <aside className="dash-sidebar sticky top-0 hidden h-screen w-[236px] shrink-0 md:block">
           <SidebarContent />
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-white/6 bg-background/72 px-5 py-4 backdrop-blur-2xl md:px-8">
-            <div className="mx-auto flex w-full max-w-[1500px] items-center gap-4">
+          <header className="dash-header sticky top-0 z-20 px-5 py-4 md:px-8">
+            <div className="mx-auto flex w-full max-w-[1240px] items-center gap-4">
               <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
-                  <button aria-label="Open menu" className="rounded-xl border border-white/8 bg-white/[0.03] p-2 hover:bg-white/[0.06] md:hidden">
-                    <Menu className="h-5 w-5" />
+                  <button
+                    aria-label="Open menu"
+                    className="rounded border border-[var(--border-2)] p-2 text-[var(--fg-3)] transition-colors hover:border-[var(--accent-soft)] hover:text-[var(--fg)] md:hidden"
+                  >
+                    <Menu className="h-5 w-5" strokeWidth={1.5} />
                   </button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[280px] overflow-y-auto border-r border-white/8 bg-card p-0">
+                <SheetContent side="left" className="w-[260px] border-r border-[var(--border)] bg-black p-0">
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
                   <SidebarContent onNavigate={() => setOpen(false)} />
                 </SheetContent>
               </Sheet>
 
               <div className="min-w-0 flex-1">
-                <h1 className="font-display text-2xl font-extrabold leading-tight md:text-3xl">Dashboard</h1>
-                <p className="text-xs text-muted-foreground">
-                  Welcome back, {displayName}
+                <p className="dash-card-kicker">
+                  <span className="acc">Hano Insiders</span>
+                  <span className="bar" />
+                  <span>Desk</span>
                 </p>
+                <h1 className="dash-header-title">{pageMeta.title}</h1>
+                {pageMeta.sub ? <p className="dash-header-sub hidden sm:block">{pageMeta.sub}</p> : null}
               </div>
 
-              <div className="relative hidden max-w-xl flex-1 md:block">
-                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  placeholder="Search insights, articles, coins..."
-                  className="w-full rounded-2xl border border-white/8 bg-black/20 py-3 pl-11 pr-4 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] placeholder:text-muted-foreground focus:border-primary/60 focus:bg-black/30 focus:outline-none"
-                />
+              <div className="relative hidden max-w-sm flex-1 lg:block">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--fg-3)]" strokeWidth={1.5} />
+                <input placeholder="Search desk…" className="dash-search" />
               </div>
 
               <NotificationBell />
@@ -200,58 +257,68 @@ function Shell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setProfileOpen((current) => !current)}
-                  className={`group relative flex h-11 w-11 items-center justify-center rounded-full border bg-card/70 p-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-card/90 ${hasMemberAura ? "avatar-premium-glow" : "border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/20"}`}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border p-0.5 transition-colors ${
+                    hasMemberAura
+                      ? "avatar-premium-glow border-[rgba(155,130,220,0.4)]"
+                      : "border-[var(--border-2)] hover:border-[var(--accent-soft)]"
+                  }`}
                 >
                   <span className="sr-only">Open account menu</span>
-                  <ProfileAvatar src={profile?.avatar_url || mascotAvatar} alt={displayName} className="h-full w-full" />
-                  <span className={`absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white/10 bg-black/80 text-muted-foreground transition-transform duration-200 ${profileOpen ? "rotate-180" : ""}`}>
-                    <ChevronDown className="h-2.5 w-2.5" />
-                  </span>
+                  <ProfileAvatar
+                    src={profile?.avatar_url || mascotAvatar}
+                    alt={displayName}
+                    className="h-full w-full"
+                  />
                 </button>
 
                 {profileOpen ? (
-                  <div className="absolute right-0 top-[calc(100%+0.8rem)] z-30 w-[19rem] rounded-[1.35rem] border border-white/10 bg-card/95 p-3 shadow-[0_28px_80px_-32px_rgba(0,0,0,0.92)] backdrop-blur-2xl">
-                    <div className="rounded-[1rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3.5">
+                  <div className="absolute right-0 top-[calc(100%+0.65rem)] z-30 w-[18rem] rounded-md border border-[var(--border)] bg-[var(--bg-2)] p-3 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.9)]">
+                    <div className="dash-member-card dash-member-card--premium">
                       <div className="flex items-center gap-3">
-                        <ProfileAvatar src={profile?.avatar_url || mascotAvatar} alt={displayName} className="h-11 w-11 shrink-0" aura={hasMemberAura} />
+                        <ProfileAvatar
+                          src={profile?.avatar_url || mascotAvatar}
+                          alt={displayName}
+                          className="h-10 w-10 shrink-0"
+                          aura={hasMemberAura}
+                        />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">{displayName}</p>
-                          <p className="truncate text-xs text-muted-foreground">{accessLabel}</p>
-                          {user?.email ? <p className="truncate pt-1 text-[11px] text-muted-foreground/85">{user.email}</p> : null}
+                          <p className="truncate text-sm font-medium">{displayName}</p>
+                          <p className="font-mono-label text-[var(--accent-soft)]" style={{ marginTop: 4 }}>
+                            {accessLabel} access
+                          </p>
+                          {user?.email ? (
+                            <p className="mt-1 truncate font-mono text-[10px] text-[var(--fg-3)]">
+                              {user.email}
+                            </p>
+                          ) : null}
                         </div>
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-[11px] font-semibold capitalize text-primary">
-                          {role || "member"}
-                        </span>
                       </div>
                     </div>
 
-                    <div className="mt-3 space-y-1">
+                    <div className="mt-2 space-y-0.5">
                       <Link
                         href="/dashboard/settings"
                         onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+                        className="flex items-center gap-2 rounded px-3 py-2.5 text-sm text-[var(--fg-2)] transition-colors hover:bg-white/[0.03] hover:text-[var(--fg)]"
                       >
-                        <Settings className="h-4 w-4" />
+                        <Settings className="h-4 w-4" strokeWidth={1.5} />
                         Account settings
                       </Link>
                       {role === "admin" ? (
                         <Link
                           href="/admin"
                           onClick={() => setProfileOpen(false)}
-                          className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+                          className="flex items-center gap-2 rounded px-3 py-2.5 text-sm text-[var(--fg-2)] transition-colors hover:bg-white/[0.03] hover:text-[var(--fg)]"
                         >
-                          <Shield className="h-4 w-4" />
-                          Open admin panel
+                          <Shield className="h-4 w-4" strokeWidth={1.5} />
+                          Admin panel
                         </Link>
                       ) : null}
                       <button
                         onClick={() => void signOut()}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+                        className="flex w-full items-center gap-2 rounded px-3 py-2.5 text-sm text-[var(--fg-2)] transition-colors hover:bg-white/[0.03] hover:text-[var(--fg)]"
                       >
-                        <LogOut className="h-4 w-4" />
+                        <LogOut className="h-4 w-4" strokeWidth={1.5} />
                         Sign out
                       </button>
                     </div>
@@ -261,15 +328,16 @@ function Shell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="mx-auto w-full max-w-[1500px] space-y-6 p-5 md:p-8">
-            {children}
-            <div className="card-surface flex flex-wrap items-center justify-between gap-4 border-white/8 bg-[linear-gradient(135deg,rgba(116,42,230,0.12),rgba(12,12,20,0.96))] px-5 py-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Crown className="h-4 w-4 text-primary" />
-                Hano Insiders member dashboard
-              </div>
-              <div>Educational analysis only. Not financial advice.</div>
-            </div>
+          <main className="dash-main">
+            <div className="dash-main-content">{children}</div>
+            <footer className="dash-footer-bar">
+              <p className="dash-footer-brand">
+                <span className="acc">Hano</span> Insiders · Research desk
+              </p>
+              <p className="dash-footer-legal">
+                Educational analysis only · Not financial advice
+              </p>
+            </footer>
           </main>
         </div>
       </div>
@@ -291,10 +359,12 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
 export function PageHeader({ kicker, title, desc }: { kicker: string; title: string; desc?: string }) {
   return (
-    <div className="card-surface p-5 sm:p-8">
-      <p className="text-[11px] tracking-[0.3em] text-muted-foreground">{kicker}</p>
-      <h1 className="mt-3 font-display text-3xl leading-tight sm:text-5xl">{title}</h1>
-      {desc ? <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{desc}</p> : null}
+    <div className="dash-page-header">
+      <p className="dash-card-kicker">
+        <span className="acc">{kicker}</span>
+      </p>
+      <h1>{title}</h1>
+      {desc ? <p className="dash-page-desc">{desc}</p> : null}
     </div>
   );
 }

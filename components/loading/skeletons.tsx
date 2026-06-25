@@ -162,43 +162,31 @@ export function SettingsSkeleton() {
 export function AdminOverviewSkeleton() {
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* KPI Cards Grid */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="panel p-5 space-y-3">
-            <Skeleton className="h-4 w-24 bg-primary/5" />
-            <Skeleton className="h-8 w-16 bg-primary/10" />
-            <Skeleton className="h-3 w-20 bg-primary/5" />
+      <div className="dash-admin-kpi-grid">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <div key={i} className="dash-admin-kpi">
+            <Skeleton className="h-4 w-4 bg-white/5" />
+            <Skeleton className="h-2.5 w-24 bg-white/5" />
+            <Skeleton className="h-8 w-16 bg-white/5" />
+            <Skeleton className="h-3 w-32 bg-white/5" />
+            <Skeleton className="h-7 w-full bg-white/5" />
           </div>
         ))}
       </div>
 
-      {/* Chart & Tables */}
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 panel p-5 space-y-4">
-          <div className="flex justify-between items-center">
-            <Skeleton className="h-5 w-36 bg-primary/10" />
-            <div className="flex gap-2">
-              <Skeleton className="h-7 w-12 rounded bg-primary/5" />
-              <Skeleton className="h-7 w-12 rounded bg-primary/5" />
-            </div>
+      <div className="dash-card dash-card--hero p-6 space-y-4">
+        <div className="flex justify-between items-center gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-28 bg-white/5" />
+            <Skeleton className="h-10 w-36 bg-white/10" />
           </div>
-          <Skeleton className="h-72 w-full bg-primary/10" />
-        </div>
-        <div className="panel p-5 space-y-4">
-          <Skeleton className="h-5 w-32 bg-primary/10" />
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex justify-between items-center py-2 border-b border-border/40 last:border-0">
-                <div className="space-y-1">
-                  <Skeleton className="h-4 w-24 bg-primary/10" />
-                  <Skeleton className="h-3 w-16 bg-primary/5" />
-                </div>
-                <Skeleton className="h-4 w-12 bg-primary/5" />
-              </div>
+          <div className="flex gap-1">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-12 bg-white/5" />
             ))}
           </div>
         </div>
+        <Skeleton className="h-44 w-full bg-white/10" />
       </div>
     </div>
   );

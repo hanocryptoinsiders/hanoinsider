@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Bell, Send, Trash2, Info, CheckCircle2, AlertTriangle, AlertCircle, Loader2, Pencil, X } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import { toast } from "sonner";
 
 type NotificationType = "info" | "success" | "warning" | "alert";
@@ -143,14 +144,11 @@ export default function AdminNotificationsPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="panel p-5 sm:p-8">
-        <p className="text-[11px] tracking-[0.3em] text-muted-foreground">ADMIN</p>
-        <h1 className="font-display mt-3 text-3xl sm:text-5xl leading-tight">Notifications</h1>
-        <p className="mt-3 text-sm text-muted-foreground max-w-2xl">
-          Send, edit, and manage broadcast notifications. They appear in the bell icon on user dashboards.
-        </p>
-      </div>
+      <PageHeader
+        kicker="Broadcast"
+        title="Notifications"
+        desc="Send, edit, and manage broadcast notifications. They appear in the bell icon on member dashboards."
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-5">
         {/* Create Notification Form */}
@@ -272,7 +270,7 @@ export default function AdminNotificationsPage() {
                 {isSending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {editingId ? "Savingâ€¦" : "Sendingâ€¦"}
+                    {editingId ? "Saving…" : "Sending…"}
                   </>
                 ) : (
                   <>

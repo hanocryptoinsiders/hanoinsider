@@ -7,14 +7,14 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 export const MASCOT_OPTIONS = [
   { id: "tie", label: "Tie - adjusting", src: "/assets/hanoinfrontend/hero-mascot.jpg", objectPosition: "42% 14%" },
   { id: "stand", label: "Stand - full body", src: "/assets/hanoinfrontend/bird-mascot.jpg", objectPosition: "38% 16%" },
-  { id: "portrait", label: "Portrait - standing", src: "/assets/hanoinfrontend/article-cover.jpg", objectPosition: "38% 18%" },
+  { id: "portrait", label: "Portrait - standing", src: "/assets/hanoinfrontend/cardBg.png", objectPosition: "38% 18%" },
   { id: "hero", label: "Hero - library wide", src: "/assets/hanoinfrontend/hero-mascot.jpg", objectPosition: "50% 20%" },
   { id: "bust", label: "Bust - close-up", src: "/assets/hanoinfrontend/bird-mascot.jpg", objectPosition: "45% 18%" },
   { id: "silhouette", label: "Silhouette - backlit", src: "/assets/hanoinfrontend/hero-mascot.jpg", objectPosition: "45% 15%" },
-  { id: "throne", label: "Throne - seated", src: "/assets/hanoinfrontend/article-cover.jpg", objectPosition: "48% 28%" },
+  { id: "throne", label: "Throne - seated", src: "/assets/hanoinfrontend/cardBg.png", objectPosition: "48% 28%" },
   { id: "lounge", label: "Lounge - smoking, NYC", src: "/assets/hanoinfrontend/bird-mascot.jpg", objectPosition: "62% 36%" },
   { id: "smoke", label: "Smoke - armchair", src: "/assets/hanoinfrontend/hero-mascot.jpg", objectPosition: "26% 42%" },
-  { id: "coat", label: "Coat - side profile", src: "/assets/hanoinfrontend/article-cover.jpg", objectPosition: "45% 12%" },
+  { id: "coat", label: "Coat - side profile", src: "/assets/hanoinfrontend/cardBg.png", objectPosition: "45% 12%" },
 ] as const;
 
 export type MascotId = (typeof MASCOT_OPTIONS)[number]["id"];

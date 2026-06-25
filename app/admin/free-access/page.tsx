@@ -8,7 +8,7 @@ import { ArrowUp, ArrowDown, Plus, Trash2, Star, RotateCcw, Eye, EyeOff, Lock, U
 
 type SlotKey = Section | "homeInsights";
 const SECTIONS: { key: SlotKey; label: string; catalog: typeof INSIGHT_CATALOG; helper: string }[] = [
-  { key: "homeInsights", label: "Dashboard Home â€” Recent Insights", catalog: INSIGHT_CATALOG, helper: "Shown in the right rail on /dashboard." },
+  { key: "homeInsights", label: "Dashboard Home  Recent Insights", catalog: INSIGHT_CATALOG, helper: "Shown in the right rail on /dashboard." },
   { key: "insights", label: "Insights Page", catalog: INSIGHT_CATALOG, helper: "Items visible on /dashboard/insights for free users." },
   { key: "articles", label: "Articles Page", catalog: ARTICLE_CATALOG, helper: "Items visible on /dashboard/articles for free users." },
   { key: "videos", label: "Videos Page", catalog: VIDEO_CATALOG, helper: "Items visible on /dashboard/videos for free users." },
@@ -78,7 +78,7 @@ function GlobalLimits() {
               <p className="text-[10px] text-muted-foreground">Currently {fa.state.slots[r.key].filter((x) => x.active).length} active slots</p>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => fa.setLimit(r.key, fa.state.limits[r.key] - 1)} className="rounded-md border border-border w-8 h-8">âˆ’</button>
+              <button onClick={() => fa.setLimit(r.key, fa.state.limits[r.key] - 1)} className="rounded-md border border-border w-8 h-8">��</button>
               <input type="number" min={0} max={20} value={fa.state.limits[r.key]} onChange={(e) => fa.setLimit(r.key, Number(e.target.value))} className="w-16 text-center rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" />
               <button onClick={() => fa.setLimit(r.key, fa.state.limits[r.key] + 1)} className="rounded-md border border-border w-8 h-8">+</button>
             </div>
@@ -171,7 +171,7 @@ function SectionEditor({ slotKey, label, catalog, helper }: { slotKey: SlotKey; 
       {available.length > 0 && (
         <div className="flex items-center gap-2 pt-2 border-t border-border">
           <select value={pick} onChange={(e) => setPick(e.target.value)} className="flex-1 min-w-0 rounded-md border border-border bg-transparent px-3 py-2 text-sm">
-            <option value="">Add an item to free slotsâ€¦</option>
+            <option value="">Add an item to free slots&</option>
             {available.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
           </select>
           <button
@@ -199,7 +199,7 @@ function PremiumFeaturedEditor() {
     <div className="space-y-5">
       <div className="panel p-5">
         <p className="text-[11px] tracking-[0.3em] text-muted-foreground">PREMIUM FEATURED</p>
-        <p className="text-xs text-muted-foreground mt-2">Star items here to pin them as featured for premium members. Featured items render with a gold accent badge across the platform. Premium users see everything either way â€” this is purely curation.</p>
+        <p className="text-xs text-muted-foreground mt-2">Star items here to pin them as featured for premium members. Featured items render with a gold accent badge across the platform. Premium users see everything either way  this is purely curation.</p>
       </div>
       {sections.map((s) => {
         const catalog = CATALOGS[s.key];

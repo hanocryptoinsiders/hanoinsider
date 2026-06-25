@@ -2,109 +2,207 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { LayoutGrid, FileEdit, Users, CreditCard, Gift, Settings as SettingsIcon, ArrowLeft, Menu, MessageSquare, Bell } from "lucide-react";
-import { LogoMark } from "@/components/LogoMark";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import {
+  LayoutGrid,
+  FileEdit,
+  Users,
+  CreditCard,
+  Gift,
+  Settings as SettingsIcon,
+  ArrowLeft,
+  Menu,
+  MessageSquare,
+  Bell,
+  Quote,
+  KeyRound,
+} from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { FreeAccessProvider } from "@/lib/free-access-context";
 import { QuoteProvider } from "@/lib/quote-context";
 import { RouteProgress } from "@/components/navigation/route-progress";
-import { useEffect } from "react";
+import { HanoWordmark } from "@/components/brand/HanoWordmark";
 
-const nav = [
-  { to: "/admin", icon: LayoutGrid, label: "Admin Overview", exact: true },
+type NavItem = {
+  to: string;
+  icon: ComponentType<{ className?: string; strokeWidth?: number | string }>;
+  label: string;
+  exact?: boolean;
+};
+
+const operationsNav: NavItem[] = [
+  { to: "/admin", icon: LayoutGrid, label: "Overview", exact: true },
   { to: "/admin/users", icon: Users, label: "Users" },
   { to: "/admin/content", icon: FileEdit, label: "Content" },
   { to: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
   { to: "/admin/comments", icon: MessageSquare, label: "Comments" },
+];
+
+const platformNav: NavItem[] = [
   { to: "/admin/notifications", icon: Bell, label: "Notifications" },
   { to: "/admin/affiliates", icon: Gift, label: "Affiliates" },
   { to: "/admin/settings", icon: SettingsIcon, label: "Settings" },
 ];
 
-function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
-  const [pendingTo, setPendingTo] = useState<string | null>(null);
+const deskNav: NavItem[] = [
+  { to: "/admin/free-access", icon: KeyRound, label: "Free access" },
+  { to: "/admin/quote", icon: Quote, label: "Desk quote" },
+];
 
-  useEffect(() => {
-    setPendingTo(null);
-  }, [pathname]);
+const PAGE_META: Record<string, { title: string; sub?: string }> = {
+  "/admin": { title: "Overview", sub: "Platform health, at a glance." },
+  "/admin/users": { title: "Users", sub: "Member accounts and roles." },
+  "/admin/content": { title: "Content", sub: "Insights, articles, and media." },
+  "/admin/subscriptions": { title: "Subscriptions", sub: "Billing and plan status." },
+  "/admin/comments": { title: "Comments", sub: "Community moderation queue." },
+  "/admin/notifications": { title: "Notifications", sub: "Broadcast alerts to members." },
+  "/admin/affiliates": { title: "Affiliates", sub: "Referral partners and payouts." },
+  "/admin/settings": { title: "Settings", sub: "Platform configuration." },
+  "/admin/free-access": { title: "Free access", sub: "Complimentary member access." },
+  "/admin/quote": { title: "Desk quote", sub: "Dashboard hero voice and mascot." },
+};
 
+function getPageMeta(pathname: string) {
+  if (PAGE_META[pathname]) return PAGE_META[pathname];
+  return { title: "Admin", sub: "Hano Insiders control desk." };
+}
+
+function NavGroup({
+  label,
+  items,
+  pathname,
+  onNavigate,
+  compact,
+}: {
+  label: string;
+  items: NavItem[];
+  pathname: string;
+  onNavigate?: () => void;
+  compact?: boolean;
+}) {
   return (
-    <div className="flex flex-col gap-5">
-      <Link href="/admin" onClick={onNavigate} className="flex items-center gap-2 px-2 py-2">
-        <LogoMark size={36} />
-        <div>
-          <span className="font-display text-2xl tracking-wider block">Hano Insiders</span>
-          <span className="text-[10px] tracking-[0.3em] text-muted-foreground">ADMIN</span>
-        </div>
-      </Link>
-      <nav className="panel space-y-2 p-3">
-        {nav.map((it) => {
-          const Icon = it.icon;
-          const active = it.exact ? pathname === it.to : pathname.startsWith(it.to);
-          return (
-            <Link 
-              key={it.to} 
-              href={it.to} 
-              onClick={() => {
-                if (pathname !== it.to) {
-                  setPendingTo(it.to);
-                }
-                if (onNavigate) onNavigate();
-              }} 
-              className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition ${active ? "bg-accent text-foreground ring-1 ring-primary/20" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"}`}
-            >
-              <Icon className="h-4 w-4" strokeWidth={1.5} />
-              <span className="flex-1 text-left">{it.label}</span>
-              {pendingTo === it.to && (
-                <span className="h-1.5 w-1.5 rounded-full bg-[oklch(0.78_0.14_85)] animate-pulse shrink-0" />
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-      <Link href="/dashboard" onClick={onNavigate} className="panel p-3 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Back to dashboard
-      </Link>
+    <div className="dash-nav-group">
+      {!compact ? <p className="dash-nav-group-label">{label}</p> : null}
+      {items.map((item) => {
+        const Icon = item.icon;
+        const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+        return (
+          <Link
+            key={item.to}
+            href={item.to}
+            onClick={() => onNavigate?.()}
+            className={`dash-nav-link ${active ? "dash-nav-link--active" : ""}`}
+          >
+            <span className="flex items-center gap-3">
+              <Icon className="dash-nav-icon" strokeWidth={1.5} />
+              {!compact ? item.label : null}
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
 
-/** Client-side admin panel shell - receives children from the Server Component layout. */
-export function AdminPanelUI({ children }: { children: React.ReactNode }) {
+function SidebarContent({ onNavigate, compact = false }: { onNavigate?: () => void; compact?: boolean }) {
+  const pathname = usePathname();
+
+  return (
+    <div className="dash-sidebar flex h-full flex-col">
+      <div className="flex items-center border-b border-[var(--border)] px-4 py-4">
+        <HanoWordmark href="/admin" compact={compact} />
+      </div>
+
+      <nav className="dash-sidebar-nav scrollbar-hide flex-1 overflow-y-auto py-5">
+        <NavGroup label="Operations" items={operationsNav} pathname={pathname} onNavigate={onNavigate} compact={compact} />
+        <NavGroup label="Platform" items={platformNav} pathname={pathname} onNavigate={onNavigate} compact={compact} />
+        <NavGroup label="Desk" items={deskNav} pathname={pathname} onNavigate={onNavigate} compact={compact} />
+      </nav>
+
+      <div className="border-t border-[var(--border)] p-4">
+        <Link
+          href="/dashboard"
+          onClick={() => onNavigate?.()}
+          className="dash-admin-exit"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+          {!compact ? <span>Back to dashboard</span> : null}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const pageMeta = getPageMeta(pathname);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  return (
+    <div className="dash-shell dash-shell--admin">
+      <RouteProgress />
+      <div className="dash-frame flex min-h-screen">
+        <aside className="dash-sidebar sticky top-0 hidden h-screen w-[236px] shrink-0 md:block">
+          <SidebarContent />
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="dash-header sticky top-0 z-20 px-5 py-4 md:px-8">
+            <div className="mx-auto flex w-full max-w-[1240px] items-center gap-4">
+              <Sheet open={open} onOpenChange={setOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    aria-label="Open menu"
+                    className="rounded border border-[var(--border-2)] p-2 text-[var(--fg-3)] transition-colors hover:border-[var(--accent-soft)] hover:text-[var(--fg)] md:hidden"
+                  >
+                    <Menu className="h-5 w-5" strokeWidth={1.5} />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[260px] border-r border-[var(--border)] bg-black p-0">
+                  <SheetTitle className="sr-only">Admin navigation</SheetTitle>
+                  <SidebarContent onNavigate={() => setOpen(false)} />
+                </SheetContent>
+              </Sheet>
+
+              <div className="min-w-0 flex-1">
+                <p className="dash-card-kicker">
+                  <span className="acc">Hano Insiders</span>
+                  <span className="bar" />
+                  <span>Admin</span>
+                </p>
+                <h1 className="dash-header-title">{pageMeta.title}</h1>
+                {pageMeta.sub ? <p className="dash-header-sub hidden sm:block">{pageMeta.sub}</p> : null}
+              </div>
+            </div>
+          </header>
+
+          <main className="dash-main">
+            <div className="dash-main-content dash-admin-content">{children}</div>
+            <footer className="dash-footer-bar">
+              <p className="dash-footer-brand">
+                <span className="acc">Hano</span> Insiders · Admin desk
+              </p>
+              <p className="dash-footer-legal">
+                Internal use only · Authorized operators
+              </p>
+            </footer>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Client-side admin panel shell — receives children from the Server Component layout. */
+export function AdminPanelUI({ children }: { children: React.ReactNode }) {
   return (
     <FreeAccessProvider>
       <QuoteProvider>
-        <div className="min-h-screen bg-noise text-foreground">
-          <RouteProgress />
-          <div className="mx-auto flex max-w-[1500px] gap-5 p-3 sm:p-5">
-            <aside className="hidden lg:block w-[220px] shrink-0 sticky top-5 h-[calc(100vh-40px)] self-start overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <SidebarBody />
-            </aside>
-            <main className="flex-1 min-w-0 space-y-4 sm:space-y-5">
-              <div className="sticky top-3 z-30 flex items-center gap-2 lg:hidden bg-background/80 backdrop-blur-md p-2 rounded-xl border border-border/80">
-                <Sheet open={open} onOpenChange={setOpen}>
-                  <SheetTrigger asChild>
-                    <button aria-label="Open menu" className="panel p-2.5">
-                      <Menu className="h-5 w-5" />
-                    </button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[280px] overflow-y-auto bg-background p-4">
-                    <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
-                    <SidebarBody onNavigate={() => setOpen(false)} />
-                  </SheetContent>
-                </Sheet>
-                <Link href="/admin" className="flex items-center gap-2 flex-1 min-w-0">
-                  <LogoMark size={28} />
-                  <span className="font-display text-lg tracking-wider truncate">Hano Insiders <span className="text-[10px] text-muted-foreground tracking-[0.2em]">ADMIN</span></span>
-                </Link>
-              </div>
-              {children}
-            </main>
-          </div>
-        </div>
+        <Shell>{children}</Shell>
       </QuoteProvider>
     </FreeAccessProvider>
   );

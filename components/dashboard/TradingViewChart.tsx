@@ -14,7 +14,6 @@ export function TradingViewChart({ symbol, theme = "dark" }: TradingViewChartPro
   useEffect(() => {
     if (!containerRef.current) return;
     containerRef.current.innerHTML = ""; // clean up previous chart
-
     const containerId = `tradingview_${symbol.toLowerCase()}`;
     const div = document.createElement("div");
     div.id = containerId;

@@ -52,7 +52,7 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   };
 
-  // ── Protect /admin routes ─────────────────────────────────────────────────
+  // Protect /admin routes
   if (pathname.startsWith("/admin")) {
     if (!user) {
       const url = request.nextUrl.clone();
@@ -71,7 +71,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ── Protect /dashboard routes ──────────────────────────────────────────────
+  // Protect /dashboard routes
   if (pathname.startsWith("/dashboard")) {
     if (isDevDashboardBypass) {
       return supabaseResponse;
@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ── Redirect logged-in users away from /login and /register ──────────────
+  // Redirect logged-in users away from /login and /register
   if ((pathname === "/login" || pathname === "/register") && user) {
     return redirect(new URL("/dashboard", request.url));
   }

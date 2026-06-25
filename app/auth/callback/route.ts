@@ -3,15 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSiteUrl } from "@/lib/site-url";
 
 /**
- * /auth/callback â€” Supabase auth exchange handler
+ * /auth/callback  Supabase auth exchange handler
  *
  * Handles three flows:
- *   1. PKCE code flow      â€” OAuth (Google) and some email links (?code=...)
- *   2. Token-hash flow     â€” Email confirmation (?token_hash=...&type=email)
- *   3. Recovery flow       â€” Password reset (?token_hash=...&type=recovery)
+ *   1. PKCE code flow       OAuth (Google) and some email links (?code=...)
+ *   2. Token-hash flow      Email confirmation (?token_hash=...&type=email)
+ *   3. Recovery flow        Password reset (?token_hash=...&type=recovery)
  *
  * Supabase's default email templates send token_hash links, NOT code links.
- * Both flows must be handled here or confirmation/reset will 404 â†’ auth_failed.
+ * Both flows must be handled here or confirmation/reset will 404 � auth_failed.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  // â”€â”€ 1. Provider-returned error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� 1. Provider-returned error ��������������������������������������������������������������������������������������������
   if (error) {
     console.error("[auth/callback] Provider error:", error, errorDescription);
     return NextResponse.redirect(
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
-  // â”€â”€ 2. Token-hash flow (email confirmation + password recovery) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� 2. Token-hash flow (email confirmation + password recovery) ��������������������������
   if (tokenHash && type) {
     const { error: verifyError } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
@@ -52,16 +52,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Password recovery â†’ send to reset-password page (session is now active)
+    // Password recovery � send to reset-password page (session is now active)
     if (type === "recovery") {
       return NextResponse.redirect(`${siteUrl}/reset-password`);
     }
 
-    // Email confirmation (type === "email") â†’ go to dashboard
+    // Email confirmation (type === "email") � go to dashboard
     return NextResponse.redirect(`${siteUrl}/dashboard?verified=1`);
   }
 
-  // â”€â”€ 3. PKCE code flow (Google OAuth, confirmation URL, recovery URL) â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� 3. PKCE code flow (Google OAuth, confirmation URL, recovery URL) ����������������
   if (code) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${siteUrl}${safePath}`);
   }
 
-  // â”€â”€ 4. No recognized params â€” redirect to login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ���� 4. No recognized params  redirect to login ����������������������������������������������������������
   console.warn("[auth/callback] No code or token_hash found in URL");
   return NextResponse.redirect(`${siteUrl}/login?error=auth_callback_failed`);
 }

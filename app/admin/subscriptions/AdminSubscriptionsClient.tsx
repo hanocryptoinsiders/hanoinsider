@@ -35,7 +35,7 @@ const filters = [
 ];
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "â€”";
+  if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -137,13 +137,13 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
               {filtered.map((s) => (
                 <tr key={s.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
                   <td className="py-3">
-                    <p className="font-mono text-xs">{s.user_email ?? "â€”"}</p>
+                    <p className="font-mono text-xs">{s.user_email ?? "—"}</p>
                     {s.user_name && (
                       <p className="text-[10px] text-muted-foreground mt-0.5">{s.user_name}</p>
                     )}
                   </td>
                   <td className="py-3 capitalize text-xs">{s.provider}</td>
-                  <td className="py-3 capitalize text-xs">{s.plan_type || "â€”"}</td>
+                  <td className="py-3 capitalize text-xs">{s.plan_type || "—"}</td>
                   <td className="py-3">
                     <span className={`text-xs font-medium capitalize ${STATUS_COLORS[s.status] ?? "text-muted-foreground"}`}>
                       {s.status.replace("_", " ")}
@@ -158,7 +158,7 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
                     </span>
                   </td>
                   <td className="py-3 text-xs text-muted-foreground capitalize">
-                    {s.premium_source || "â€”"}
+                    {s.premium_source || "—"}
                   </td>
                   <td className="py-3 text-muted-foreground text-xs">
                     {s.cancel_at_period_end ? `Ends ${formatDate(s.current_period_end)}` : formatDate(s.current_period_end)}

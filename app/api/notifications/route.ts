@@ -1,8 +1,8 @@
 /**
  * app/api/notifications/route.ts
  *
- * GET  /api/notifications        â€” Fetch recent notifications for the current user (with read status)
- * POST /api/notifications        â€” Create a new notification (admin only)
+ * GET  /api/notifications        — Fetch recent notifications for the current user (with read status)
+ * POST /api/notifications        — Create a new notification (admin only)
  */
 
 import { NextResponse } from "next/server";

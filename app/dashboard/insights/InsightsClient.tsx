@@ -73,7 +73,7 @@ export function InsightsClient({ initialInsights }: InsightsClientProps) {
                       <Clock className="h-3 w-3" /> {featured.body ? Math.ceil(featured.body.split(/\s+/).length / 200) : 1} min read
                     </span>
                     {featured.published_at && (
-                      <span>Â· {new Date(featured.published_at).toLocaleDateString()}</span>
+                      <span>· {new Date(featured.published_at).toLocaleDateString()}</span>
                     )}
                   </div>
                   <span className="mt-6 w-fit inline-flex items-center gap-2 rounded-lg bg-foreground text-background px-5 py-2.5 text-sm hover:opacity-90 transition">

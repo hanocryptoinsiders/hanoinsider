@@ -12,7 +12,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { User } from "@supabase/supabase-js";
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Types ����������������������������������������������������������������������������������������������������������������������������������������
 
 export type UserRole = "guest" | "free" | "premium" | "admin";
 
@@ -52,7 +52,7 @@ export function hasActiveSubscription(profile: Pick<UserProfile, "role" | "is_pr
   return true;
 }
 
-// â”€â”€â”€ Core Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Core Helpers ��������������������������������������������������������������������������������������������������������������������������
 
 /**
  * Returns the currently authenticated Supabase user (server-validated via getUser()).
@@ -105,14 +105,14 @@ export async function isPremium(): Promise<boolean> {
   return hasActiveSubscription(profile);
 }
 
-// â”€â”€â”€ Route Guards (call from Server Components / layouts) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Route Guards (call from Server Components / layouts) ����������������������������������������
 
 /**
  * requireAuth()
  *
  * Ensures the user is logged in and not suspended or banned.
- * If not authenticated â†’ redirects to /login.
- * If suspended/banned â†’ redirects to /account-suspended.
+ * If not authenticated � redirects to /login.
+ * If suspended/banned � redirects to /account-suspended.
  * Returns the current user + profile for use in the layout/page.
  */
 export async function requireAuth(): Promise<{
@@ -138,9 +138,9 @@ export async function requireAuth(): Promise<{
  * requireAdmin()
  *
  * Ensures the user is logged in AND has role "admin" AND is not suspended/banned.
- * If not authenticated â†’ redirects to /login.
- * If suspended/banned â†’ redirects to /account-suspended.
- * If authenticated but not admin â†’ redirects to /dashboard.
+ * If not authenticated � redirects to /login.
+ * If suspended/banned � redirects to /account-suspended.
+ * If authenticated but not admin � redirects to /dashboard.
  * Returns the current user + profile.
  */
 export async function requireAdmin(): Promise<{
@@ -174,9 +174,9 @@ export async function requireAdmin(): Promise<{
  * requirePremium()
  *
  * Ensures the user is logged in AND has premium or admin access AND is not suspended/banned.
- * If not authenticated â†’ redirects to /login.
- * If suspended/banned â†’ redirects to /account-suspended.
- * If authenticated but not premium â†’ redirects to /pricing.
+ * If not authenticated � redirects to /login.
+ * If suspended/banned � redirects to /account-suspended.
+ * If authenticated but not premium � redirects to /pricing.
  * Returns the current user + profile.
  */
 export async function requirePremium(): Promise<{

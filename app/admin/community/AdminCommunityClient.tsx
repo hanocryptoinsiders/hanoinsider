@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Types ����������������������������������������������������������������������������������������������������������������������������������������
 type ChatProfile = { full_name: string | null; email: string | null; role?: string; avatar_url?: string | null };
 type ChatRoom = { name: string; slug: string };
 
@@ -58,7 +58,7 @@ interface Props {
   rooms: Room[];
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Helpers ������������������������������������������������������������������������������������������������������������������������������������
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
     month: "short", day: "numeric",
@@ -79,10 +79,10 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   unban_user:     { label: "Unban User",    color: "text-success" },
 };
 
-// â”€â”€â”€ Tab enum â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Tab enum ��������������������������������������������������������������������������������������������������������������������������������
 type Tab = "messages" | "hidden" | "restricted" | "log";
 
-// â”€â”€â”€ Confirm Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Confirm Modal ����������������������������������������������������������������������������������������������������������������������
 function ConfirmModal({
   title, body, confirmLabel, confirmClass, onConfirm, onClose,
 }: {
@@ -107,7 +107,7 @@ function ConfirmModal({
   );
 }
 
-// â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ������ Main Component ����������������������������������������������������������������������������������������������������������������������
 export function AdminCommunityClient({
   hiddenMessages: initialHidden,
   recentMessages: initialRecent,
@@ -127,7 +127,7 @@ export function AdminCommunityClient({
     title: string; body: string; confirmLabel: string; confirmClass: string; onConfirm: () => void;
   } | null>(null);
 
-  // â”€â”€â”€ Call moderation API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ Call moderation API ������������������������������������������������������������������������������
   const callModerate = async (payload: Record<string, string | undefined>) => {
     const res = await fetch("/api/chat/moderate", {
       method: "POST",
@@ -142,7 +142,7 @@ export function AdminCommunityClient({
     return true;
   };
 
-  // â”€â”€â”€ Message actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ Message actions ��������������������������������������������������������������������������������������
   const handleUnhide = (msgId: string) => {
     setConfirm({
       title: "Restore message",
@@ -194,7 +194,7 @@ export function AdminCommunityClient({
     });
   };
 
-  // â”€â”€â”€ User restriction actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ������ User restriction actions ��������������������������������������������������������������������
   const handleMuteUser = (userId: string, name: string) => {
     setConfirm({
       title: `Mute ${name}`,
@@ -334,7 +334,7 @@ export function AdminCommunityClient({
         ))}
       </div>
 
-      {/* â”€â”€â”€ Live Messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ������ Live Messages �������������������������������������������������������������������������������� */}
       {tab === "messages" && (
         <section className="panel p-6">
           <p className="text-[11px] tracking-[0.2em] text-muted-foreground mb-4">
@@ -397,7 +397,7 @@ export function AdminCommunityClient({
         </section>
       )}
 
-      {/* â”€â”€â”€ Hidden Messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ������ Hidden Messages ���������������������������������������������������������������������������� */}
       {tab === "hidden" && (
         <section className="panel p-6">
           <p className="text-[11px] tracking-[0.2em] text-muted-foreground mb-4">
@@ -450,7 +450,7 @@ export function AdminCommunityClient({
         </section>
       )}
 
-      {/* â”€â”€â”€ Restricted Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ������ Restricted Users �������������������������������������������������������������������������� */}
       {tab === "restricted" && (
         <section className="panel p-6">
           <p className="text-[11px] tracking-[0.2em] text-muted-foreground mb-4">
@@ -528,7 +528,7 @@ export function AdminCommunityClient({
         </section>
       )}
 
-      {/* â”€â”€â”€ Audit Log â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ������ Audit Log ���������������������������������������������������������������������������������������� */}
       {tab === "log" && (
         <section className="panel p-6">
           <p className="text-[11px] tracking-[0.2em] text-muted-foreground mb-4">
@@ -552,11 +552,11 @@ export function AdminCommunityClient({
                       <span className="text-foreground font-medium">{entry.admin?.full_name || entry.admin?.email || "Admin"}</span>
                       {entry.target && (
                         <>
-                          <span> â†’ </span>
+                          <span> � </span>
                           <span className="text-foreground">{entry.target.full_name || entry.target.email || "User"}</span>
                         </>
                       )}
-                      {entry.reason && <span className="ml-2 text-muted-foreground/70">Â· {entry.reason}</span>}
+                      {entry.reason && <span className="ml-2 text-muted-foreground/70">� {entry.reason}</span>}
                     </div>
                     <span className="text-[10px] text-muted-foreground shrink-0">{formatDate(entry.created_at)}</span>
                   </div>

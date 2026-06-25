@@ -47,7 +47,7 @@ export default function AdminSettings() {
           <span className="text-sm">Show banner site-wide</span>
         </div>
         <div className="grid md:grid-cols-2 gap-5 mt-4">
-          <Field label="Banner text" value="Limited seats open Â· 50 spots this month." span />
+          <Field label="Banner text" value="Limited seats open · 50 spots this month." span />
           <Field label="CTA URL" value="/pricing" />
           <Field label="CTA label" value="Claim a seat" />
         </div>

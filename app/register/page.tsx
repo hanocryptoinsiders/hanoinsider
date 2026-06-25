@@ -114,14 +114,14 @@ export default function Register() {
       return;
     }
 
-    // If no error and an immediate session Ã¢â€ â€™ auto-confirmed, go straight to dashboard
+    // If no error and an immediate session auto-confirmed, go straight to dashboard
     if (data.session) {
       toast.success("Account created! Welcome to Hano Insiders.");
       router.replace("/dashboard");
       return;
     }
 
-    // No error and no session Ã¢â€ â€™ email confirmation required.
+    // No error and no session email confirmation required.
     // Supabase can return data.user = null in some cases (rate-limit, unwhitelisted redirect URL)
     // but the email was still sent. Always show the verification state.
     const isAlreadyRegistered =
@@ -302,7 +302,7 @@ export default function Register() {
               </div>
             </>
           ) : (
-            /* Ã¢â€â‚¬Ã¢â€â‚¬ Email Verification Sent Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+            /* Email Verification Sent */
             <div className="text-center py-4">
               <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5">
                 <Check className="h-8 w-8 text-emerald-400" />

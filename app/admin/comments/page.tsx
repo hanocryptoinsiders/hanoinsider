@@ -75,9 +75,9 @@ export default function AdminCommentsPage() {
                 <div className="space-y-1 flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="font-mono text-muted-foreground">{c.user}</span>
-                    <span className="text-muted-foreground/60">â€¢</span>
+                    <span className="text-muted-foreground/60">•</span>
                     <span className="text-muted-foreground">{c.target}</span>
-                    <span className="text-muted-foreground/60">â€¢</span>
+                    <span className="text-muted-foreground/60">•</span>
                     <span className="text-muted-foreground/60">{c.date}</span>
                     {c.flags > 0 && (
                       <span className="flex items-center gap-1 rounded bg-destructive/10 border border-destructive/20 px-1.5 py-0.5 text-[10px] text-destructive">

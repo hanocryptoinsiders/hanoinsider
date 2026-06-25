@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type Props = {
   size?: number;
   className?: string;
@@ -12,9 +14,13 @@ export function LogoMark({ size = 32, className = "" }: Props) {
       className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/15 bg-black ${className}`}
       style={{ width: size, height: size }}
     >
-      <span className="font-display text-[0.9em] font-extrabold tracking-[-0.08em] text-foreground">
-        H<span className="text-primary">N</span>
-      </span>
+      <Image
+        src="/assets/hanoinfrontend/logo.png"
+        alt="Hano Insiders Logo"
+        width={size}
+        height={size}
+        className="w-full h-full object-cover rounded-full"
+      />
     </span>
   );
 }

@@ -60,7 +60,6 @@ export async function POST(req: Request) {
   const targetUserId: string | undefined = body.target_user_id;
   const reason: string | undefined = body.reason;
   const until: string | undefined = body.until; // ISO date string for mute duration
-
   if (!action) {
     return NextResponse.json({ error: "Action is required" }, { status: 400 });
   }

@@ -42,7 +42,7 @@ export default function ResetPassword() {
       }
     });
 
-    // Check for existing session immediately â€” verifyOtp in callback sets the session
+    // Check for existing session immediately — verifyOtp in callback sets the session
     // synchronously before redirect, so it should already be here.
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -68,7 +68,7 @@ export default function ResetPassword() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  // â”€â”€ Password strength â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Password strength
   const passwordStrength = (() => {
     if (!password) return 0;
     let score = 0;
@@ -83,7 +83,7 @@ export default function ResetPassword() {
   const strengthLabel = ["", "Weak", "Fair", "Good", "Strong", "Very strong"][passwordStrength] || "";
   const strengthColor = ["", "bg-red-500", "bg-orange-400", "bg-yellow-400", "bg-emerald-500", "bg-emerald-400"][passwordStrength] || "bg-border";
 
-  // â”€â”€ Validate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Validate
   const validate = (): boolean => {
     const errors: { password?: string; confirm?: string } = {};
     if (!password) errors.password = "Password is required";
@@ -95,7 +95,7 @@ export default function ResetPassword() {
     return Object.keys(errors).length === 0;
   };
 
-  // â”€â”€ Submit new password â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Submit new password
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -125,13 +125,13 @@ export default function ResetPassword() {
     setTimeout(() => router.replace("/login?reset=true"), 2500);
   };
 
-  // â”€â”€ Loading skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Loading skeleton
   if (pageState === "loading") {
     return (
       <div className="min-h-screen bg-noise flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Verifying reset linkâ€¦</p>
+          <p className="text-sm text-muted-foreground">Verifying reset link…</p>
         </div>
       </div>
     );
@@ -150,7 +150,7 @@ export default function ResetPassword() {
             <span className="font-display text-xl tracking-wider group-hover:opacity-80 transition-opacity">Hano Insiders</span>
           </Link>
 
-          {/* â”€â”€ Success State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* Success State */}
           {pageState === "success" && (
             <div className="text-center py-4">
               <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5">
@@ -158,7 +158,7 @@ export default function ResetPassword() {
               </div>
               <h1 className="font-display text-3xl">Password updated</h1>
               <p className="text-sm text-muted-foreground mt-3 leading-relaxed max-w-xs mx-auto">
-                Your password has been changed successfully. Redirecting you to sign inâ€¦
+                Your password has been changed successfully. Redirecting you to sign in…
               </p>
               <div className="mt-6">
                 <Link
@@ -171,7 +171,7 @@ export default function ResetPassword() {
             </div>
           )}
 
-          {/* â”€â”€ Error State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* Error State */}
           {pageState === "error" && (
             <div className="text-center py-4">
               <div className="h-16 w-16 rounded-full bg-destructive/10 border border-destructive/30 flex items-center justify-center mx-auto mb-5">
@@ -195,7 +195,7 @@ export default function ResetPassword() {
             </div>
           )}
 
-          {/* â”€â”€ Reset Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* Reset Form */}
           {pageState === "ready" && (
             <>
               <div className="mb-6">
