@@ -7,13 +7,11 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Navbar } from "./Navbar";
 import { Hero } from "./Hero";
-import { EditorialStatement } from "./EditorialStatement";
-import { About } from "./About";
-import { Features } from "./Features";
-import { DashboardPreview } from "./DashboardPreview";
-import { CTA } from "./CTA";
 import { Pricing } from "./Pricing";
+import { Features } from "./Features";
+import { About } from "./About";
 import { Faqs } from "./Faqs";
+import { BottomCTA } from "./BottomCTA";
 import { useLandingMobileReveal } from "./useLandingMobileReveal";
 
 export function HanoLanding() {
@@ -80,7 +78,7 @@ export function HanoLanding() {
     let ticking = false;
     function syncSticky() {
       const hero = document.querySelector(".hero-section");
-      const door = document.querySelector(".door");
+      const door = document.querySelector(".pricing-grid");
       if (!hero) return;
       const heroBottom = hero.getBoundingClientRect().bottom;
       const doorTop = door ? door.getBoundingClientRect().top : Infinity;
@@ -175,18 +173,16 @@ export function HanoLanding() {
 
       <main className="landing-main">
         <Hero />
-        <EditorialStatement />
-        <About />
-        <Features />
-        <DashboardPreview />
-        <CTA />
         <Pricing
           handleCheckout={handleCheckout}
           isLoading={isLoading}
           activePlan={activePlan}
           userEmail={user?.email || null}
         />
+        <Features />
+        <About />
         <Faqs />
+        <BottomCTA />
       </main>
 
       <footer className="landing-footer">

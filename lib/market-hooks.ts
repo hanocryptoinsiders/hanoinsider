@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getMarketSnapshot, type MarketSnapshot } from "@/lib/market.functions";
+import { getCoinHistory, getMarketSnapshot, type MarketSnapshot } from "@/lib/market.functions";
 
 export function useMarketSnapshot(initialData?: MarketSnapshot) {
   return useQuery<MarketSnapshot>({
@@ -22,30 +22,10 @@ export function useHomeMarketSnapshot(initialData?: MarketSnapshot) {
   });
 }
 
-async function fetchCoinHistory(symbol: string, timeframe: string): Promise<number[]> {
-  const s = symbol.toUpperCase();
-  const endpoint = `/api/market/history?symbol=${s}&timeframe=${timeframe}`;
-
-  try {
-    const res = await fetch(endpoint);
-    if (!res.ok) throw new Error("Failed to fetch historical data");
-    const json = await res.json();
-    if (json.Response === "Error") {
-      throw new Error(json.Message || "Failed to fetch historical data");
-    }
-    const dataList = json.Data?.Data ?? [];
-    return dataList.map((item: any) => item.close as number);
-  } catch (err) {
-    console.error("fetchCoinHistory error:", err);
-    // Return dummy points if the API fails so the UI has a safe fallback
-    return [10, 12, 11, 15, 14, 18, 16, 20, 19, 23, 21, 25];
-  }
-}
-
 export function useCoinHistory(symbol: string, timeframe: string, initialData?: number[]) {
   return useQuery<number[]>({
     queryKey: ["coin-history", symbol, timeframe],
-    queryFn: () => fetchCoinHistory(symbol, timeframe),
+    queryFn: () => getCoinHistory(symbol, timeframe),
     staleTime: 60_000,
     refetchInterval: 60_000,
     enabled: !!symbol,

@@ -109,7 +109,7 @@ function SidebarContent({ onNavigate, compact = false }: { onNavigate?: () => vo
 
   return (
     <div className="dash-sidebar flex h-full flex-col">
-      <div className="flex items-center border-b border-[var(--border)] px-4 py-4">
+      <div className="dash-sidebar-brand">
         <HanoWordmark href="/admin" compact={compact} />
       </div>
 

@@ -154,7 +154,7 @@ function SidebarContent({ onNavigate, compact = false }: { onNavigate?: () => vo
 
   return (
     <div className="dash-sidebar flex h-full flex-col">
-      <div className="flex items-center border-b border-[var(--border)] px-4 py-4">
+      <div className="dash-sidebar-brand">
         <HanoWordmark href="/dashboard" compact={compact} />
       </div>
 
@@ -237,11 +237,6 @@ function Shell({ children }: { children: ReactNode }) {
               </Sheet>
 
               <div className="min-w-0 flex-1">
-                <p className="dash-card-kicker">
-                  <span className="acc">Hano Insiders</span>
-                  <span className="bar" />
-                  <span>Desk</span>
-                </p>
                 <h1 className="dash-header-title">{pageMeta.title}</h1>
                 {pageMeta.sub ? <p className="dash-header-sub hidden sm:block">{pageMeta.sub}</p> : null}
               </div>

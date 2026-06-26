@@ -4,8 +4,8 @@ import { useState } from "react";
 
 const items = [
   {
-    q: "Who is Hano Insiders for?",
-    a: "It is built for serious beginners who want curated crypto intelligence, educational explainers, and premium member-only market context. If you are tired of signal groups and anonymous calls, the desk is built for you.",
+    q: "What is Hano Insiders?",
+    a: "Hano Insiders is a premium crypto intelligence desk built for serious beginners. Members get curated market overviews, in-depth research articles, weekly insight briefs, 50+ asset profiles, direct support, and affiliate tools.",
   },
   {
     q: "Is this a signals group?",
@@ -23,6 +23,10 @@ const items = [
     q: "How does the early bird offer work?",
     a: "The first 20 founding members lock in lifetime access for a one-time payment of $50. No monthly renewals, no price increases. Once spots fill, pricing moves to the regular monthly rate.",
   },
+  {
+    q: "What do I need to get started?",
+    a: "Create an account, choose your plan, and gain immediate access to the full intelligence desk. No drip-feed, no gated tiers — everything from day one.",
+  },
 ];
 
 export function Faqs() {
@@ -30,41 +34,29 @@ export function Faqs() {
 
   return (
     <section id="faqs" className="landing-section">
-      <div className="faq-layout">
-        <div className="faq-intro" data-m-reveal>
-          <div className="eyebrow">
-            <span>FAQ</span>
-            <span className="bar" />
-            <span>Common questions</span>
-          </div>
-          <h2>
-            Questions, answered{" "}
-            <em>clearly.</em>
-          </h2>
-          <p className="sec-stand">
-            Hano Insiders provides educational content and market analysis only.
-            Nothing on this platform is financial advice.
-          </p>
-        </div>
+      <div className="faqs-head" data-m-reveal>
+        <h2 className="faqs-title">
+          Common questions, answered clearly.
+        </h2>
+      </div>
 
-        <div className="faq-list" data-m-reveal data-m-reveal-delay="1">
-          {items.map((item, index) => {
-            const isOpen = openIndex === index;
-            return (
-              <div key={item.q} className="faq-item">
-                <button
-                  type="button"
-                  onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="faq-btn"
-                >
-                  <span className="faq-q">{item.q}</span>
-                  <span className={`faq-icon ${isOpen ? "open" : ""}`}>+</span>
-                </button>
-                {isOpen && <p className="faq-answer">{item.a}</p>}
-              </div>
-            );
-          })}
-        </div>
+      <div className="faqs-grid" data-m-reveal data-m-reveal-delay="1">
+        {items.map((item, index) => {
+          const isOpen = openIndex === index;
+          return (
+            <div key={item.q} className="faq-item">
+              <button
+                type="button"
+                onClick={() => setOpenIndex(isOpen ? null : index)}
+                className="faq-btn"
+              >
+                <span className="faq-q">{item.q}</span>
+                <span className={`faq-icon ${isOpen ? "open" : ""}`}>+</span>
+              </button>
+              {isOpen && <p className="faq-answer">{item.a}</p>}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

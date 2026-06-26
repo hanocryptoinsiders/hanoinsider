@@ -1,6 +1,7 @@
 "use server";
 
 import { getMockMarketSnapshot } from "@/lib/coin-profiles";
+import { getCoinHistoryPrices } from "@/lib/market-history";
 
 const CMC_BASE = "https://pro-api.coinmarketcap.com";
 
@@ -99,4 +100,9 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
     console.error("getMarketSnapshot failed:", message);
     return getMockMarketSnapshot(message);
   }
+}
+
+/** Historical close prices for sparklines/charts (CoinGecko → CryptoCompare → Binance). */
+export async function getCoinHistory(symbol: string, timeframe: string) {
+  return getCoinHistoryPrices(symbol, timeframe);
 }
