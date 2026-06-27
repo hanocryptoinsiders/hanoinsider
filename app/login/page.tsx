@@ -14,14 +14,13 @@ import { getSiteUrl } from "@/lib/site-url";
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signInWithGoogle, user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
   // Forgot password state
@@ -35,7 +34,6 @@ function LoginContent() {
     const error = searchParams.get("error");
     if (error === "auth_failed") toast.error("Authentication failed. Please try again.");
     if (error === "auth_callback_failed") toast.error("Verification failed or link expired. Please try again.");
-    if (error === "oauth_failed") toast.error("Google sign-in was cancelled or failed.");
     if (searchParams.get("reset") === "true") toast.success("Password reset link sent! Check your inbox.");
   }, [searchParams]);
 
@@ -86,15 +84,6 @@ function LoginContent() {
     // Explicit router.replace here ensures immediate, reliable redirection
     toast.success("Welcome back!");
     router.replace("/dashboard");
-  };
-
-  // Google Login
-  const handleGoogle = async () => {
-    setIsGoogleLoading(true);
-    await signInWithGoogle();
-    // Loading state stays true while Google redirects
-    // If there's an error, signInWithGoogle will show a toast and we reset
-    setTimeout(() => setIsGoogleLoading(false), 5000); // safety reset
   };
 
   // Password Reset
@@ -149,31 +138,6 @@ function LoginContent() {
               <div className="mb-6">
                 <h1 className="font-display text-3xl">Welcome back</h1>
                 <p className="text-sm text-muted-foreground mt-1">Sign in to your Hano Insiders account.</p>
-              </div>
-
-              {/* Google */}
-              <button
-                onClick={handleGoogle}
-                disabled={isGoogleLoading || isSubmitting}
-                className="w-full flex items-center justify-center gap-3 rounded-xl border border-border/80 bg-secondary/30 py-3 text-sm hover:bg-secondary/60 active:scale-[0.99] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {isGoogleLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden>
-                    <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C33.6 6.5 29 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z"/>
-                    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3 0 5.7 1.1 7.8 3l5.7-5.7C33.6 7 29 5 24 5 16.3 5 9.7 9.4 6.3 14.7z"/>
-                    <path fill="#4CAF50" d="M24 43c5 0 9.5-1.9 12.9-5l-6-4.9c-2 1.4-4.5 2.4-6.9 2.4-5.2 0-9.6-3.5-11.2-8.4l-6.5 5C9.7 38.6 16.3 43 24 43z"/>
-                    <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6 4.9c-.4.4 6.4-4.7 6.4-14.4 0-1.2-.1-2.3-.4-3.5z"/>
-                  </svg>
-                )}
-                <span className="font-medium">Continue with Google</span>
-              </button>
-
-              <div className="my-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-border/60" />
-                <span className="text-[11px] text-muted-foreground tracking-widest">OR</span>
-                <div className="h-px flex-1 bg-border/60" />
               </div>
 
               {/* Email + Password form */}
@@ -233,7 +197,7 @@ function LoginContent() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || isGoogleLoading}
+                  disabled={isSubmitting}
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground text-background py-3 text-sm font-semibold hover:bg-foreground/90 active:scale-[0.99] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_15px_-4px_rgba(255,255,255,0.2)]"
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
@@ -243,8 +207,8 @@ function LoginContent() {
               <div className="mt-5 flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
                   No account?{" "}
-                  <Link href="/register" className="text-foreground hover:underline font-medium">
-                    Create one free
+                  <Link href="/#pricing" className="text-foreground hover:underline font-medium">
+                    Choose a plan
                   </Link>
                 </p>
                 <div className="flex items-center gap-1 text-[11px] text-muted-foreground">

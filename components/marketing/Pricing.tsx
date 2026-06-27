@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Loader2 } from "lucide-react";
+import { PaymentMethodsTicker } from "./PaymentMethodsTicker";
+import type { PlanId } from "@/lib/payments";
 
 const features = [
   "Full access to all insights and articles",
@@ -40,15 +41,9 @@ function useCountdown() {
 }
 
 export function Pricing({
-  handleCheckout,
-  isLoading,
-  activePlan,
-  userEmail,
+  onBuy,
 }: {
-  handleCheckout: (plan: string, offer?: string) => Promise<void>;
-  isLoading: boolean;
-  activePlan: string | null;
-  userEmail: string | null;
+  onBuy: (planId: PlanId) => void;
 }) {
   const countdown = useCountdown();
 
@@ -97,14 +92,10 @@ export function Pricing({
           </ul>
           <button
             type="button"
-            onClick={() => handleCheckout("monthly")}
-            disabled={isLoading}
+            onClick={() => onBuy("regular")}
             className="plan-cta plan-cta--ghost"
           >
-            {isLoading && activePlan === "monthly" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : null}
-            Subscribe Now <span className="arr">→</span>
+            Buy Now <span className="arr">→</span>
           </button>
         </article>
 
@@ -136,45 +127,16 @@ export function Pricing({
             </ul>
             <button
               type="button"
-              onClick={() => handleCheckout("monthly", "early_bird")}
-              disabled={isLoading}
+              onClick={() => onBuy("early_bird")}
               className="plan-cta cta-gradient"
             >
-              {isLoading && activePlan === "early_bird" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
-              Subscribe Now <span className="arr">→</span>
+              Buy Lifetime Access <span className="arr">→</span>
             </button>
           </div>
         </article>
       </div>
 
-      <div className="pricing-methods" data-m-reveal data-m-reveal-delay="3">
-        <div className="pricing-method">
-          <span className="pricing-method-tag">Card Payments</span>
-          <div className="pricing-method-row">
-            <span className="pricing-method-provider">stripe</span>
-            <span className="pricing-method-note">
-              Visa, Mastercard, Amex accepted securely via Stripe.
-            </span>
-          </div>
-        </div>
-        <div className="pricing-method-divider" />
-        <div className="pricing-method">
-          <span className="pricing-method-tag">Crypto Payments</span>
-          <div className="pricing-method-row">
-            <span className="pricing-method-note">
-              Manual crypto payments available — email the desk to arrange.
-            </span>
-            <a
-              href={`mailto:hannah@hanoanimations.com?subject=Hano%20Insiders%20crypto%20payment&body=I%20would%20like%20to%20subscribe%20using%20crypto.%20Registered%20email:%20${encodeURIComponent(userEmail || "")}`}
-              className="pricing-aside-link"
-            >
-              Email support <span className="arr">→</span>
-            </a>
-          </div>
-        </div>
-      </div>
+      <PaymentMethodsTicker />
     </section>
   );
 }

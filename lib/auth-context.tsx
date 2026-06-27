@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { getSiteUrl } from "@/lib/site-url";
 
 export type UserRole = "guest" | "free" | "premium" | "admin";
 
@@ -42,7 +41,6 @@ type AuthContextType = {
   isLoading: boolean;
   isMockMode: boolean;
   setMockRole: (role: UserRole) => void;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: { full_name?: string; email?: string }) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -202,19 +200,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.success(`Viewing as: ${role.toUpperCase()}`);
   };
 
-  // Google OAuth
-  const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${getSiteUrl()}/auth/callback`,
-      },
-    });
-    if (error) {
-      toast.error(error.message || "Failed to initiate Google sign-in");
-    }
-  };
-
   // Sign Out
   const signOut = async () => {
     if (isMockMode) {
@@ -316,7 +301,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isMockMode,
         setMockRole,
-        signInWithGoogle,
         signOut,
         updateProfile,
         refreshProfile,

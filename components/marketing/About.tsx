@@ -26,7 +26,7 @@ export function About() {
             No signals. No anonymous calls. Just structured intelligence.
           </p>
           <div className="about-cta-row">
-            <Link href="/register" className="cta-primary">
+            <Link href="/#pricing" className="cta-primary">
               Start Your Edge <span className="arr">→</span>
             </Link>
           </div>

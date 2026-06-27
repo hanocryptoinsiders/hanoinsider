@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export function CTA() {
   return (
     <section id="desk" className="landing-section">
@@ -39,9 +37,9 @@ export function CTA() {
       </div>
 
       <div className="cta-row" data-m-reveal data-m-reveal-delay="2">
-        <Link href="/register" className="cta-primary">
+        <a href="#pricing" className="cta-primary">
           Join Insiders <span className="arr">→</span>
-        </Link>
+        </a>
         <a href="#pricing" className="cta-secondary">
           View pricing details <span className="arr">→</span>
         </a>

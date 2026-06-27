@@ -50,6 +50,9 @@ export async function POST(request: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        // Persist the paid customer FIRST — this is the source of truth that
+        // later gates registration eligibility and dashboard access.
+        await recordPaidCustomer(supabase, session);
         if (session.mode === "subscription" && session.subscription) {
           const subscriptionId =
             typeof session.subscription === "string" ? session.subscription : session.subscription.id;
@@ -80,6 +83,53 @@ export async function POST(request: Request) {
     console.error("[stripe/webhook] Handler error:", error);
     const message = error instanceof Error ? error.message : "Webhook handler failed";
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * Records (or refreshes) the paid_customers row after Stripe confirms payment.
+ * Email is normalized before storage. has_registered is never reset here so a
+ * later webhook replay cannot un-register an existing account.
+ */
+async function recordPaidCustomer(supabase: SB, session: Stripe.Checkout.Session) {
+  const meta = session.metadata ?? {};
+  const rawEmail = meta.email || session.customer_details?.email || session.customer_email || "";
+  if (!rawEmail) {
+    console.error("[stripe/webhook] checkout.session.completed missing email:", session.id);
+    return;
+  }
+  const email = normalizeEmail(rawEmail);
+
+  const customerId =
+    typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
+
+  const isPaid = session.payment_status === "paid" || session.payment_status === "no_payment_required";
+
+  const { data: existing } = await supabase
+    .from("paid_customers")
+    .select("id, has_registered")
+    .eq("email", email)
+    .maybeSingle();
+
+  const base = {
+    first_name: meta.first_name || null,
+    last_name: meta.last_name || null,
+    email,
+    selected_plan: meta.plan_id || meta.plan_type || null,
+    stripe_customer_id: customerId,
+    stripe_checkout_session_id: session.id,
+    payment_status: isPaid ? "paid" : session.payment_status ?? "pending",
+    paid_at: isPaid ? new Date().toISOString() : null,
+  };
+
+  if (existing) {
+    await supabase.from("paid_customers").update(base).eq("id", existing.id);
+  } else {
+    await supabase.from("paid_customers").insert({ ...base, has_registered: false });
   }
 }
 

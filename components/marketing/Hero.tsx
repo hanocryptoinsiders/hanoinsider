@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import { BadgePercent, CircleCheck, CirclePlay, LineChart, type LucideIcon } from "lucide-react";
 
 const trustSignals: { label: string; icon: LucideIcon }[] = [
@@ -27,6 +26,8 @@ const memberAvatars = [
   },
 ];
 
+const HERO_CHART_SRC = "/assets/hanoinfrontend/heroRight.png";
+
 export function Hero() {
   return (
     <section className="hero-section">
@@ -41,9 +42,19 @@ export function Hero() {
           <em>move</em> the market.
         </h1>
 
+        <div className="hero-chart-mobile" aria-hidden="true">
+          <Image
+            src={HERO_CHART_SRC}
+            alt=""
+            width={1200}
+            height={600}
+            priority
+            className="hero-chart-img"
+          />
+        </div>
+
         <p className="hero-stand">
-          Clean, built-from-scratch intelligence, market analysis, and editorial research —
-          built for serious beginners who want{" "}
+          Clean, built-from-scratch intelligence, market analysis, and editorial research built for serious beginners who want{" "}
           <span className="acc">clarity without the chaos</span>.
           Not AI-generated. Hand-curated by the desk.
         </p>
@@ -63,10 +74,10 @@ export function Hero() {
         </div>
 
         <div className="cta-row">
-          <Link href="/register" className="cta-primary cta-gradient">
+          <a href="#pricing" className="cta-primary cta-gradient">
             Start Your Edge <span className="arr">→</span>
-          </Link>
-          <a href="#about" className="cta-secondary cta-secondary--learn">
+          </a>
+          <a href="#video" className="cta-secondary cta-secondary--learn">
             Learn More{" "}
             <span className="cta-play-icon" aria-hidden="true">
               <CirclePlay size={22} strokeWidth={2.5} />
@@ -74,33 +85,18 @@ export function Hero() {
           </a>
         </div>
 
-        <div className="hero-social-proof">
-          <div className="hero-avatar-stack">
-            {memberAvatars.map((avatar, i) => (
-              <div
-                key={avatar.src}
-                className="hero-avatar"
-                style={{ zIndex: memberAvatars.length - i }}
-              >
-                <Image
-                  src={avatar.src}
-                  alt={avatar.alt}
-                  width={32}
-                  height={32}
-                  className="hero-avatar-img"
-                />
-              </div>
-            ))}
-          </div>
-          <div className="hero-stars">
-            {"★★★★★".split("").map((s, i) => (
-              <span key={i} className="hero-star">{s}</span>
-            ))}
-          </div>
-          <span className="hero-social-text">
-            Trusted by serious crypto beginners worldwide
-          </span>
-        </div>
+        
+      </div>
+
+      <div className="hero-chart" aria-hidden="true">
+        <Image
+          src={HERO_CHART_SRC}
+          alt=""
+          width={1200}
+          height={600}
+          priority
+          className="hero-chart-img"
+        />
       </div>
     </section>
   );

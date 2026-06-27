@@ -24,7 +24,7 @@ export function BottomCTA() {
             </p>
           </div>
         </div>
-        <Link href="/register" className="bottom-cta-btn cta-gradient">
+        <Link href="/#pricing" className="bottom-cta-btn cta-gradient">
           Join Now <span className="arr">→</span>
         </Link>
       </div>

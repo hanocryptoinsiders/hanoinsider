@@ -48,7 +48,7 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-1 text-sm">
             {[
               { to: "/", label: "Landing" },
-              { to: "/pricing", label: "Pricing" },
+              { to: "/#pricing", label: "Pricing" },
               { to: "/dashboard", label: "Dashboard" },
             ].map((l) => {
               const active = pathname === l.to;
@@ -66,7 +66,7 @@ export function Header() {
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Link
-              href="/pricing"
+              href="/#pricing"
               className="md:hidden rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-white/5"
             >
               Pricing
@@ -92,7 +92,7 @@ export function Header() {
                   Sign in
                 </Link>
                 <Link
-                  href="/register"
+                  href="/#pricing"
                   className="group relative inline-flex items-center gap-1.5 rounded-lg px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-background bg-foreground shadow-[0_6px_20px_-6px_rgba(255,255,255,0.35),inset_0_1px_0_rgba(255,255,255,0.6)] hover:shadow-[0_10px_30px_-6px_rgba(255,255,255,0.5),inset_0_1px_0_rgba(255,255,255,0.7)] transition-shadow"
                 >
                   Join Insiders

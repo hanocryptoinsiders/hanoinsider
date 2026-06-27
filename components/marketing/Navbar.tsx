@@ -39,9 +39,14 @@ export function Navbar() {
               Dashboard <span className="arr">→</span>
             </button>
           ) : (
-            <Link href="/register" className="topbar-cta-btn">
-              Get Started
-            </Link>
+            <>
+              <Link href="/login" className="topbar-action mx-2 topbar-action--plain">
+                Log In
+              </Link>
+              <a href="#pricing" className="topbar-cta-btn">
+                Get Started
+              </a>
+            </>
           )}
         </div>
       </div>
