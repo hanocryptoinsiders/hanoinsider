@@ -15,6 +15,50 @@ const coinIds: Record<string, string> = {
   LINK: "chainlink",
   MATIC: "matic-network",
   LTC: "litecoin",
+  BCH: "bitcoin-cash",
+  TON: "the-open-network",
+  NEAR: "near",
+  UNI: "uniswap",
+  XLM: "stellar",
+  ATOM: "cosmos",
+  XMR: "monero",
+  ETC: "ethereum-classic",
+  FIL: "filecoin",
+  APT: "aptos",
+  ARB: "arbitrum",
+  OP: "optimism",
+  IMX: "immutable-x",
+  HBAR: "hedera-hashgraph",
+  VET: "vechain",
+  ALGO: "algorand",
+  AAVE: "aave",
+  GRT: "the-graph",
+  SUI: "sui",
+  INJ: "injective-protocol",
+  RNDR: "render-token",
+  SEI: "sei-network",
+  PEPE: "pepe",
+  WIF: "dogwifcoin",
+  TIA: "celestia",
+  MKR: "maker",
+  LDO: "lido-dao",
+  CRO: "crypto-com-chain",
+  QNT: "quant-network",
+  STX: "blockstack",
+  FTM: "fantom",
+  RUNE: "thorchain",
+  KAS: "kaspa",
+  FLOW: "flow",
+  EGLD: "elrond-erd-2",
+  SAND: "the-sandbox",
+  MANA: "decentraland",
+  AXS: "axie-infinity",
+  THETA: "theta-token",
+  XTZ: "tezos",
+  CHZ: "chiliz",
+  EOS: "eos",
+  GALA: "gala",
+  DAI: "dai",
 };
 
 const timeframeAliases: Record<string, string> = {
@@ -88,6 +132,9 @@ function normalizeTimeframe(timeframe: string) {
 }
 
 type HistoryPoint = { time: number; close: number };
+
+/** Public-facing history point: unix seconds + USD close price. */
+export type CoinHistoryPoint = { t: number; price: number };
 
 async function fetchFromCoinGecko(
   symbol: string,
@@ -185,10 +232,16 @@ async function fetchFromBinance(
   }));
 }
 
-export async function getCoinHistoryPrices(
+/**
+ * Resolves real historical price points (with timestamps) for a symbol/timeframe.
+ * Tries CoinGecko → CryptoCompare → Binance and returns the first non-empty result.
+ * Returns [] when every provider fails, so callers can show an error state instead
+ * of fabricated chart data.
+ */
+async function resolveHistoryPoints(
   symbol: string,
   timeframe: string,
-): Promise<number[]> {
+): Promise<HistoryPoint[]> {
   const normalizedSymbol = symbol.toUpperCase();
   const normalizedTimeframe = normalizeTimeframe(timeframe);
   const config = configs[normalizedTimeframe] || configs["24H"];
@@ -203,12 +256,36 @@ export async function getCoinHistoryPrices(
     try {
       const data = await provider();
       if (data.length > 0) {
-        return data.map((point) => point.close);
+        return data.filter((point) => Number.isFinite(point.close) && point.close > 0);
       }
     } catch (error) {
       console.warn("Coin history provider failed:", error);
     }
   }
 
+  return [];
+}
+
+export async function getCoinHistoryPrices(
+  symbol: string,
+  timeframe: string,
+): Promise<number[]> {
+  const points = await resolveHistoryPoints(symbol, timeframe);
+  if (points.length > 0) {
+    return points.map((point) => point.close);
+  }
   return COIN_HISTORY_FALLBACK;
+}
+
+/**
+ * Real historical price series with timestamps for full charts.
+ * Returns [] on total provider failure (no synthetic fallback) so the UI
+ * can render an explicit error/empty state rather than misleading data.
+ */
+export async function getCoinHistorySeriesPoints(
+  symbol: string,
+  timeframe: string,
+): Promise<CoinHistoryPoint[]> {
+  const points = await resolveHistoryPoints(symbol, timeframe);
+  return points.map((point) => ({ t: point.time * 1000, price: point.close }));
 }

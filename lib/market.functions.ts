@@ -1,12 +1,13 @@
 "use server";
 
 import { getMockMarketSnapshot } from "@/lib/coin-profiles";
-import { getCoinHistoryPrices } from "@/lib/market-history";
+import { getCoinHistoryPrices, getCoinHistorySeriesPoints, type CoinHistoryPoint } from "@/lib/market-history";
 
 const CMC_BASE = "https://pro-api.coinmarketcap.com";
 
 export type CmcCoin = {
   id: number;
+  rank: number;
   name: string;
   symbol: string;
   price: number;
@@ -15,6 +16,9 @@ export type CmcCoin = {
   percentChange7d: number;
   marketCap: number;
   volume24h: number;
+  circulatingSupply: number;
+  totalSupply: number;
+  maxSupply: number | null;
 };
 
 export type MarketSnapshot = {
@@ -64,10 +68,11 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
       cmcFetch("/v1/global-metrics/quotes/latest?convert=USD", key),
     ]);
 
-    const top: CmcCoin[] = (listings.data ?? []).map((c: any) => {
+    const top: CmcCoin[] = (listings.data ?? []).map((c: any, index: number) => {
       const q = c.quote?.USD ?? {};
       return {
         id: c.id,
+        rank: c.cmc_rank ?? index + 1,
         name: c.name,
         symbol: c.symbol,
         price: q.price ?? 0,
@@ -76,6 +81,9 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
         percentChange7d: q.percent_change_7d ?? 0,
         marketCap: q.market_cap ?? 0,
         volume24h: q.volume_24h ?? 0,
+        circulatingSupply: c.circulating_supply ?? 0,
+        totalSupply: c.total_supply ?? 0,
+        maxSupply: c.max_supply ?? null,
       };
     });
 
@@ -105,4 +113,16 @@ export async function getMarketSnapshot(): Promise<MarketSnapshot> {
 /** Historical close prices for sparklines/charts (CoinGecko → CryptoCompare → Binance). */
 export async function getCoinHistory(symbol: string, timeframe: string) {
   return getCoinHistoryPrices(symbol, timeframe);
+}
+
+/**
+ * Historical close prices WITH timestamps for full price charts.
+ * Real market data only (CoinGecko → CryptoCompare → Binance). Returns [] on failure
+ * so the chart can render a graceful empty/error state instead of fake data.
+ */
+export async function getCoinHistorySeries(
+  symbol: string,
+  timeframe: string,
+): Promise<CoinHistoryPoint[]> {
+  return getCoinHistorySeriesPoints(symbol, timeframe);
 }

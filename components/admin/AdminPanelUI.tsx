@@ -9,10 +9,8 @@ import {
   Users,
   CreditCard,
   Gift,
-  Settings as SettingsIcon,
   ArrowLeft,
   Menu,
-  MessageSquare,
   Bell,
   Quote,
   KeyRound,
@@ -35,13 +33,11 @@ const operationsNav: NavItem[] = [
   { to: "/admin/users", icon: Users, label: "Users" },
   { to: "/admin/content", icon: FileEdit, label: "Content" },
   { to: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
-  { to: "/admin/comments", icon: MessageSquare, label: "Comments" },
 ];
 
 const platformNav: NavItem[] = [
   { to: "/admin/notifications", icon: Bell, label: "Notifications" },
   { to: "/admin/affiliates", icon: Gift, label: "Affiliates" },
-  { to: "/admin/settings", icon: SettingsIcon, label: "Settings" },
 ];
 
 const deskNav: NavItem[] = [
@@ -54,10 +50,8 @@ const PAGE_META: Record<string, { title: string; sub?: string }> = {
   "/admin/users": { title: "Users", sub: "Member accounts and roles." },
   "/admin/content": { title: "Content", sub: "Insights, articles, and media." },
   "/admin/subscriptions": { title: "Subscriptions", sub: "Billing and plan status." },
-  "/admin/comments": { title: "Comments", sub: "Community moderation queue." },
   "/admin/notifications": { title: "Notifications", sub: "Broadcast alerts to members." },
   "/admin/affiliates": { title: "Affiliates", sub: "Referral partners and payouts." },
-  "/admin/settings": { title: "Settings", sub: "Platform configuration." },
   "/admin/free-access": { title: "Free access", sub: "Complimentary member access." },
   "/admin/quote": { title: "Desk quote", sub: "Dashboard hero voice and mascot." },
 };

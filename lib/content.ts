@@ -15,6 +15,8 @@ export interface ContentItem {
   category: string | null;
   tags: string[];
   is_premium: boolean;
+  /** When true the item is shareable publicly at /share/[slug] without login. */
+  is_public?: boolean;
   status: "draft" | "published" | "archived";
   video_url: string | null;
   author_id: string | null;
@@ -51,12 +53,13 @@ export async function getContentItems(type?: "insight" | "article" | "video", ad
   const supabase = await createClient();
 
   const columns = "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, status, published_at, created_at";
+  const adminColumns = `${columns}, is_public`;
 
   if (adminMode) {
     // 1. Double check admin privilege on the server
     await requireAdmin();
     
-    let query = supabase.from("content_items").select(columns).order("created_at", { ascending: false });
+    let query = supabase.from("content_items").select(adminColumns).order("created_at", { ascending: false });
     if (type) {
       query = query.eq("content_type", type);
     }
@@ -220,5 +223,64 @@ export async function togglePremiumContent(id: string, currentlyPremium: boolean
 
   revalidatePath("/admin/content");
   revalidatePath(`/dashboard/${contentType}s`);
+}
+
+/**
+ * Admin-only: toggle an item's public-share status.
+ * Making an item public also publishes it (the public route requires
+ * status = 'published'), so the shareable link works immediately.
+ * Returns the updated row (including the slug) for building the share link.
+ */
+export async function togglePublicContent(
+  id: string,
+  makePublic: boolean,
+  contentType: string,
+): Promise<{ slug: string; is_public: boolean; status: string }> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const updatePayload: Record<string, unknown> = { is_public: makePublic };
+  if (makePublic) {
+    updatePayload.status = "published";
+    updatePayload.published_at = new Date().toISOString();
+  }
+
+  const { data: item, error } = await supabase
+    .from("content_items")
+    .update(updatePayload)
+    .eq("id", id)
+    .select("slug, is_public, status, published_at")
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin/content");
+  revalidatePath(`/dashboard/${contentType}s`);
+  revalidatePath(`/share/${item.slug}`);
+  return { slug: item.slug, is_public: item.is_public, status: item.status };
+}
+
+/**
+ * Public reader: fetch a publicly-shared, published item by slug.
+ * Reads the `public_shared_content` view, which only exposes rows where
+ * is_public = true AND status = 'published'. Works for anonymous visitors
+ * (no login required) and never returns drafts, private, or admin-only data.
+ */
+export async function getPublicContentBySlug(slug: string): Promise<ContentItem | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("public_shared_content")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getPublicContentBySlug failed:", error.message);
+    return null;
+  }
+  return (data as ContentItem | null) ?? null;
 }
 

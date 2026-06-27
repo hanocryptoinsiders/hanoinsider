@@ -1,51 +1,14 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Users, FileText, Eye, Gift, CreditCard, MessageSquare, Video, Activity } from "lucide-react";
-import { Sparkline } from "@/components/dashboard/Sparkline";
 
 export const revalidate = 0;
 
 export default function AdminHome() {
   return (
-    <>
-      <Suspense fallback={<AdminKPISkeleton />}>
-        <AdminKPIs />
-      </Suspense>
-
-      <section className="dash-card dash-card--hero">
-        <div className="dash-card-head" style={{ marginBottom: 20, paddingBottom: 20 }}>
-          <div>
-            <p className="dash-card-kicker">
-              <span className="acc">Revenue</span>
-              <span className="bar" />
-              <span>Last 30d</span>
-            </p>
-            <h2 className="dash-card-title dash-card-title--lg">$48,210</h2>
-            <p className="dash-admin-kpi-note dash-admin-kpi-note--up" style={{ marginTop: 8 }}>
-              +8.4% vs previous period
-            </p>
-          </div>
-          <div className="dash-range-toggle">
-            {["7D", "30D", "90D", "1Y"].map((t) => (
-              <button
-                key={t}
-                type="button"
-                className={`dash-range-btn ${t === "30D" ? "dash-range-btn--active" : ""}`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-        <Sparkline
-          height={180}
-          points={[20, 24, 22, 28, 26, 32, 30, 38, 34, 42, 40, 48, 44, 52, 50, 58, 55, 62, 60, 68, 65, 72, 70, 78, 75, 82, 80, 88, 85, 92]}
-          stroke="#9b82dc"
-          fill="#9b82dc"
-          className="w-full"
-        />
-      </section>
-    </>
+    <Suspense fallback={<AdminKPISkeleton />}>
+      <AdminKPIs />
+    </Suspense>
   );
 }
 
@@ -58,7 +21,6 @@ function AdminKPISkeleton() {
           <div className="h-2.5 w-24 rounded bg-white/5" />
           <div className="h-8 w-16 rounded bg-white/5" />
           <div className="h-3 w-32 rounded bg-white/5" />
-          <div className="h-7 w-full rounded bg-white/5" />
         </div>
       ))}
     </div>
@@ -129,7 +91,6 @@ async function AdminKPIs() {
             <p className={`dash-admin-kpi-note ${k.up ? "dash-admin-kpi-note--up" : "dash-admin-kpi-note--down"}`}>
               {k.change}
             </p>
-            <Sparkline height={28} stroke="#9b82dc" fill="#9b82dc" className="mt-1" />
           </div>
         );
       })}

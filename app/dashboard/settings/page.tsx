@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Crown, Monitor, Shield, Loader2, ExternalLink, ArrowRight, KeyRound, Laptop, User } from "lucide-react";
+import { Crown, Monitor, Shield, Loader2, ExternalLink, KeyRound, Laptop, User, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
@@ -57,7 +56,6 @@ type TabType = "general" | "subscription" | "security" | "community";
 export default function Settings() {
   const { profile, updateProfile, isPremium, role, user, refreshProfile } = useAuth();
   const searchParams = useSearchParams();
-  const supabase = createClient();
 
   const [activeTab, setActiveTab] = useState<TabType>("general");
 
@@ -65,13 +63,15 @@ export default function Settings() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Billing States
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
   // Security Form States
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   // Client Session States
@@ -156,14 +156,30 @@ export default function Settings() {
     }
   }, []);
 
+  // Password strength score (0-5)
+  const passwordStrength = (() => {
+    if (!newPassword) return 0;
+    let score = 0;
+    if (newPassword.length >= 8) score++;
+    if (newPassword.length >= 12) score++;
+    if (/[A-Z]/.test(newPassword)) score++;
+    if (/[0-9]/.test(newPassword)) score++;
+    if (/[^A-Za-z0-9]/.test(newPassword)) score++;
+    return score;
+  })();
+
+  const strengthLabel = ["", "Weak", "Fair", "Good", "Strong", "Very strong"][passwordStrength] ?? "";
+  const strengthColor = ["", "bg-red-500", "bg-orange-400", "bg-yellow-400", "bg-emerald-500", "bg-emerald-400"][passwordStrength] ?? "bg-border";
+
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!newPassword) {
       toast.error("Please enter a new password");
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters long");
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -173,10 +189,20 @@ export default function Settings() {
 
     setIsUpdatingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      
-      toast.success("Security password updated successfully!");
+      // Server-side route uses the Admin API so it works regardless of the
+      // browser client's access-token state (which may be expired in-session).
+      const res = await fetch("/api/auth/update-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update password");
+      }
+
+      toast.success("Password updated successfully!");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: unknown) {
@@ -407,34 +433,83 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <form onSubmit={handleUpdatePassword} className="space-y-4">
+                <form onSubmit={handleUpdatePassword} className="space-y-5">
                   <div className="grid md:grid-cols-2 gap-5">
+                    {/* New password field */}
                     <div className="space-y-2">
                       <label className="text-xs text-muted-foreground font-medium">New password</label>
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Min. 6 characters"
-                        className="w-full rounded-lg border border-border bg-background/50 px-3.5 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring focus:border-foreground transition-all"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Min. 8 characters"
+                          autoComplete="new-password"
+                          className="w-full rounded-lg border border-border bg-background/50 px-3.5 py-3 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-ring focus:border-foreground transition-all"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+                          aria-label={showNewPassword ? "Hide password" : "Show password"}
+                        >
+                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {/* Strength bar */}
+                      {newPassword.length > 0 && (
+                        <div className="space-y-1 pt-0.5">
+                          <div className="flex gap-1 h-1">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <div
+                                key={i}
+                                className={`flex-1 rounded-full transition-all duration-300 ${i <= passwordStrength ? strengthColor : "bg-border/40"}`}
+                              />
+                            ))}
+                          </div>
+                          {strengthLabel && (
+                            <p className="text-[11px] text-muted-foreground">{strengthLabel}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
+
+                    {/* Confirm password field */}
                     <div className="space-y-2">
                       <label className="text-xs text-muted-foreground font-medium">Confirm password</label>
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Re-enter new password"
-                        className="w-full rounded-lg border border-border bg-background/50 px-3.5 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring focus:border-foreground transition-all"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Re-enter new password"
+                          autoComplete="new-password"
+                          className={`w-full rounded-lg border bg-background/50 px-3.5 py-3 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-ring focus:border-foreground transition-all ${
+                            confirmPassword && confirmPassword !== newPassword
+                              ? "border-destructive/70"
+                              : "border-border"
+                          }`}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+                          aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {confirmPassword && confirmPassword !== newPassword && (
+                        <p className="text-[11px] text-destructive">Passwords do not match</p>
+                      )}
                     </div>
                   </div>
+
                   <button
                     type="submit"
-                    disabled={isUpdatingPassword}
+                    disabled={isUpdatingPassword || !newPassword || !confirmPassword}
                     className="flex items-center justify-center gap-2 rounded-lg border border-border bg-secondary/40 hover:bg-secondary px-5 py-3 text-xs font-bold transition disabled:opacity-50 active:scale-[0.99]"
                   >
                     {isUpdatingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Password"}

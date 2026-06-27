@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { getCoinHistory, getMarketSnapshot, type MarketSnapshot } from "@/lib/market.functions";
+import { getCoinHistory, getCoinHistorySeries, getMarketSnapshot, type MarketSnapshot } from "@/lib/market.functions";
+import type { CoinHistoryPoint } from "@/lib/market-history";
 
 export function useMarketSnapshot(initialData?: MarketSnapshot) {
   return useQuery<MarketSnapshot>({
@@ -28,6 +29,22 @@ export function useCoinHistory(symbol: string, timeframe: string, initialData?: 
     queryFn: () => getCoinHistory(symbol, timeframe),
     staleTime: 60_000,
     refetchInterval: 60_000,
+    enabled: !!symbol,
+    initialData,
+  });
+}
+
+/** Real timestamped price series for the coin detail chart. */
+export function useCoinHistorySeries(
+  symbol: string,
+  timeframe: string,
+  initialData?: CoinHistoryPoint[],
+) {
+  return useQuery<CoinHistoryPoint[]>({
+    queryKey: ["coin-history-series", symbol, timeframe],
+    queryFn: () => getCoinHistorySeries(symbol, timeframe),
+    staleTime: 60_000,
+    refetchInterval: 120_000,
     enabled: !!symbol,
     initialData,
   });
