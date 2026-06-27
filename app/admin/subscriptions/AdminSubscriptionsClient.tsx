@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import type { SubscriptionRow } from "./page";
-import { grantPremiumAction, revokePremiumAction } from "./actions";
+import { grantPremiumAction, revokePremiumAction, grantCryptoMembershipAction } from "./actions";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "text-success",
@@ -67,6 +67,17 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
       toast.success("Premium access granted");
     } else {
       toast.error(result.error || "Failed to grant premium");
+    }
+    setLoadingAction(null);
+  };
+
+  const handleGrantCrypto = async (userId: string) => {
+    setLoadingAction(userId + "-crypto");
+    const result = await grantCryptoMembershipAction(userId, 30);
+    if (result.success) {
+      toast.success("Crypto membership set (+30 days)");
+    } else {
+      toast.error(result.error || "Failed to set crypto membership");
     }
     setLoadingAction(null);
   };
@@ -165,14 +176,23 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
                   </td>
                   <td className="py-3 text-muted-foreground text-xs">{formatDate(s.created_at)}</td>
                   <td className="py-3">
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        onClick={() => handleGrantCrypto(s.user_id)}
+                        disabled={loadingAction === s.user_id + "-crypto"}
+                        className="rounded px-2 py-1 text-[10px] font-medium bg-[oklch(0.78_0.14_85)]/10 text-[oklch(0.78_0.14_85)] hover:bg-[oklch(0.78_0.14_85)]/20 transition disabled:opacity-50"
+                        title="Set/renew a crypto membership with a 30-day expiry (triggers reminders + auto-revoke)"
+                      >
+                        {s.is_premium ? "Renew 30d" : "Crypto 30d"}
+                      </button>
                       {!s.is_premium ? (
                         <button
                           onClick={() => handleGrantPremium(s.user_id)}
                           disabled={loadingAction === s.user_id + "-grant"}
                           className="rounded px-2 py-1 text-[10px] font-medium bg-success/10 text-success hover:bg-success/20 transition disabled:opacity-50"
+                          title="Comp access with no expiry (never auto-revoked)"
                         >
-                          Grant
+                          Grant (no expiry)
                         </button>
                       ) : (
                         <button
