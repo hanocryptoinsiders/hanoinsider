@@ -55,7 +55,7 @@ export async function getContentItems(type?: "insight" | "article" | "video", ad
   const supabase = await createClient();
 
   const columns =
-    "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, status, published_at, created_at, related_coin_slug";
+    "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, is_public, status, published_at, created_at, related_coin_slug";
   const adminColumns = `${columns}, is_public`;
 
   if (adminMode) {

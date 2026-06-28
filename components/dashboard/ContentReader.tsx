@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Clock, Heart, MessageCircle, Bookmark, Share2, Lock, Trash2, Send, MessageSquare, Coins } from "lucide-react";
 import { RichReader } from "@/lib/rich-text";
@@ -9,6 +9,8 @@ import type { ContentItem } from "@/lib/content";
 import { findCoinProfile } from "@/lib/coin-profiles";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { getPublicShareUrl } from "@/lib/site-url";
+import { copyOrShareUrl } from "@/lib/share-content";
 import { toast } from "sonner";
 
 /**
@@ -37,7 +39,7 @@ interface CommentWithProfile {
 }
 
 export default function ContentReaderDisplay({ item, locked, contentType }: ContentReaderProps) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { user } = useAuth();
 
   const [comments, setComments] = useState<CommentWithProfile[]>([]);
@@ -47,6 +49,9 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
   const [newCommentText, setNewCommentText] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isLoadingLikesComments, setIsLoadingLikesComments] = useState(true);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [discussionReloadKey, setDiscussionReloadKey] = useState(0);
 
   const backTo =
     contentType === "insight"
@@ -59,62 +64,92 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
   const relatedCoin = item.related_coin_slug ? findCoinProfile(item.related_coin_slug) : undefined;
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchData() {
+      setIsLoadingLikesComments(true);
+      setCommentsError(null);
+
       try {
-        setIsLoadingLikesComments(true);
-        
-        // 1. Fetch likes count
         const { count: totalLikes, error: likesError } = await supabase
           .from("content_likes")
           .select("*", { count: "exact", head: true })
           .eq("content_id", item.id);
 
+        if (cancelled) return;
         if (likesError) throw likesError;
         setLikesCount(totalLikes || 0);
 
-        // 2. Fetch if user has liked
-        if (user) {
+        const userId = user?.id;
+        if (userId) {
           const { data: userLike, error: userLikeError } = await supabase
             .from("content_likes")
             .select("id")
             .eq("content_id", item.id)
-            .eq("user_id", user.id)
+            .eq("user_id", userId)
             .maybeSingle();
 
+          if (cancelled) return;
           if (userLikeError) throw userLikeError;
           setHasLiked(!!userLike);
         } else {
           setHasLiked(false);
         }
 
-        // 3. Fetch comments
-        const { data: commentsList, error: commentsError } = await supabase
+        const { data: commentsList, error: commentsFetchError } = await supabase
           .from("content_comments")
-          .select(`
-            id,
-            content_id,
-            user_id,
-            text,
-            created_at,
-            profiles (
-              full_name,
-              avatar_url
-            )
-          `)
+          .select("id, content_id, user_id, text, created_at")
           .eq("content_id", item.id)
           .order("created_at", { ascending: false });
 
-        if (commentsError) throw commentsError;
-        setComments((commentsList as any) || []);
-      } catch (err: any) {
+        if (cancelled) return;
+        if (commentsFetchError) throw commentsFetchError;
+
+        const rows = commentsList ?? [];
+        const userIds = [...new Set(rows.map((c) => c.user_id).filter(Boolean))];
+
+        let profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url")
+            .in("id", userIds);
+
+          if (cancelled) return;
+          if (profilesError) throw profilesError;
+
+          profileMap = Object.fromEntries(
+            (profiles ?? []).map((p) => [
+              p.id,
+              { full_name: p.full_name, avatar_url: p.avatar_url },
+            ]),
+          );
+        }
+
+        setComments(
+          rows.map((c) => ({
+            ...c,
+            profiles: profileMap[c.user_id] ?? null,
+          })),
+        );
+      } catch (err: unknown) {
+        if (cancelled) return;
         console.error("Error loading likes and comments:", err);
+        setCommentsError(
+          err instanceof Error ? err.message : "Could not load discussion. Please refresh.",
+        );
       } finally {
-        setIsLoadingLikesComments(false);
+        if (!cancelled) {
+          setIsLoadingLikesComments(false);
+        }
       }
     }
 
-    fetchData();
-  }, [item.id, user]);
+    void fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id, user?.id, discussionReloadKey, supabase]);
 
   const handleLikeToggle = async () => {
     if (!user) {
@@ -181,22 +216,24 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
           user_id: user.id,
           text: trimmedText,
         })
-        .select(`
-          id,
-          content_id,
-          user_id,
-          text,
-          created_at,
-          profiles (
-            full_name,
-            avatar_url
-          )
-        `)
+        .select("id, content_id, user_id, text, created_at")
         .single();
 
       if (error) throw error;
 
-      setComments((prev) => [insertedData as any, ...prev]);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setComments((prev) => [
+        {
+          ...(insertedData as Omit<CommentWithProfile, "profiles">),
+          profiles: profile ?? null,
+        },
+        ...prev,
+      ]);
       setNewCommentText("");
       toast.success("Comment posted successfully");
     } catch (err: any) {
@@ -222,6 +259,41 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
       toast.success("Comment deleted");
     } catch (err: any) {
       toast.error(err.message || "Failed to delete comment");
+    }
+  };
+
+  const handleShare = async () => {
+    if (!item.slug?.trim()) {
+      toast.error("This item has no shareable link yet.");
+      return;
+    }
+
+    let isPublic = item.is_public;
+    if (isPublic !== true) {
+      const { data: shared } = await supabase
+        .from("public_shared_content")
+        .select("slug")
+        .eq("slug", item.slug)
+        .maybeSingle();
+      isPublic = !!shared;
+    }
+
+    if (!isPublic) {
+      toast.error("Make this content public in admin before copying a share link.");
+      return;
+    }
+
+    setIsSharing(true);
+    const url = getPublicShareUrl(item.slug);
+    const result = await copyOrShareUrl(item.title, url);
+    setIsSharing(false);
+
+    if (result === "copied") {
+      toast.success("Public link copied.");
+    } else if (result === "shared") {
+      toast.success("Link shared.");
+    } else if (result === "failed") {
+      toast.error("Could not copy link.");
     }
   };
 
@@ -350,8 +422,14 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
             <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} />
             {saved ? "Saved" : "Save"}
           </button>
-          <button className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition">
-            <Share2 className="h-3.5 w-3.5" /> Share
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={isSharing}
+            title={item.is_public ? "Copy public share link" : "Not public — enable sharing in admin"}
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition disabled:opacity-50"
+          >
+            <Share2 className="h-3.5 w-3.5" /> {isSharing ? "…" : "Share"}
           </button>
         </div>
       </div>
@@ -471,6 +549,17 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
         {isLoadingLikesComments ? (
           <div className="flex items-center justify-center py-10">
             <span className="animate-spin rounded-full h-5 w-5 border-2 border-muted border-t-foreground" />
+          </div>
+        ) : commentsError ? (
+          <div className="panel p-8 text-center border border-destructive/30 bg-destructive/5 rounded-xl">
+            <p className="text-sm text-destructive">{commentsError}</p>
+            <button
+              type="button"
+              onClick={() => setDiscussionReloadKey((k) => k + 1)}
+              className="mt-3 text-xs underline text-muted-foreground hover:text-foreground"
+            >
+              Try again
+            </button>
           </div>
         ) : comments.length === 0 ? (
           <div className="panel p-10 text-center border border-border/40 bg-secondary/5 rounded-xl">
