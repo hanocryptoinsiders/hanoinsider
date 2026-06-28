@@ -21,7 +21,7 @@ export function PublicContentReader({ item }: PublicContentReaderProps) {
 
   return (
     <article>
-      <div className="mb-6 mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium tracking-wide text-emerald-400">
+      <div className="mb-6 mt-10 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium tracking-wide text-emerald-400">
         <Gift className="h-3.5 w-3.5" />
         Free preview — no login required
       </div>

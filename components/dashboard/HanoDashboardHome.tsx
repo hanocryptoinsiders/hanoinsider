@@ -160,14 +160,14 @@ function MarketOverview({ snap }: { snap: MarketSnapshot }) {
             <span>Market overview</span>
             {snap.fetchedAt ? (
               <>
-                <span className="bar" />
-                <span>{formatUpdatedAt(snap.fetchedAt)}</span>
+                <span className="bar hidden sm:inline" />
+                <span className="hidden sm:inline">{formatUpdatedAt(snap.fetchedAt)}</span>
               </>
             ) : null}
           </p>
           <h2 className="dash-card-title dash-card-title--lg">Total market snapshot</h2>
         </div>
-        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
           <div className="dash-range-toggle">
             {RANGES.map((r) => (
               <button

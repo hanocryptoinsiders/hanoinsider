@@ -2779,6 +2779,19 @@
     color: var(--accent-soft);
     background: rgba(155, 130, 220, .1);
   }
+  @media (max-width: 639px) {
+    .dash-range-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 100%;
+    }
+    .dash-range-btn {
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .dash-range-btn:nth-child(2n) { border-right: 0; }
+    .dash-range-btn:nth-child(n + 3) { border-bottom: 0; }
+  }
 
   .dash-rail-quote {
     border-left: 2px solid var(--accent-soft);
