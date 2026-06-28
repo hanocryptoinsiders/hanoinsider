@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: ["isomorphic-dompurify", "jsdom"],
   typescript: {
     ignoreBuildErrors: true,
   },

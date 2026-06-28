@@ -44,7 +44,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicSharePage({ params }: PageProps) {
   const { slug } = await params;
-  const item = await getPublicSharedContentBySlug(slug);
+
+  let item;
+  try {
+    item = await getPublicSharedContentBySlug(slug);
+  } catch (err) {
+    console.error("[PublicSharePage]", err);
+    throw err;
+  }
 
   if (!item) notFound();
 

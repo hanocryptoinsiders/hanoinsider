@@ -1,6 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { getServiceSupabase } from "@/lib/supabase/service";
 
-/** Shape returned by the public_shared_content view (no auth required). */
+/** Shape returned for publicly shared content (no auth required). */
 export interface PublicSharedContent {
   id: string;
   title: string;
@@ -21,42 +21,40 @@ export interface PublicSharedContent {
   updated_at: string;
 }
 
-function createAnonClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    throw new Error("Supabase environment variables are not configured.");
-  }
-
-  return createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
-}
+const PUBLIC_COLUMNS =
+  "id, title, slug, description, body, thumbnail_url, content_type, category, tags, is_premium, is_public, status, video_url, published_at, created_at, updated_at, related_coin_slug";
 
 /**
  * Fetches publicly shared content for anonymous visitors.
- * Uses a cookie-less anon client so /share works without login.
+ * Uses the service role on the server only — callers must enforce is_public + published.
  */
 export async function getPublicSharedContentBySlug(
   slug: string,
 ): Promise<PublicSharedContent | null> {
-  const supabase = createAnonClient();
+  try {
+    const supabase = getServiceSupabase();
 
-  const { data, error } = await supabase
-    .from("public_shared_content")
-    .select("*")
-    .eq("slug", slug)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .from("content_items")
+      .select(PUBLIC_COLUMNS)
+      .eq("slug", slug)
+      .eq("is_public", true)
+      .eq("status", "published")
+      .maybeSingle();
 
-  if (error) {
-    console.error("[getPublicSharedContentBySlug]", error.message);
+    if (error) {
+      console.error("[getPublicSharedContentBySlug]", error.message);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      ...data,
+      tags: data.tags ?? [],
+    } as PublicSharedContent;
+  } catch (err) {
+    console.error("[getPublicSharedContentBySlug]", err);
     return null;
   }
-
-  return data as PublicSharedContent | null;
 }
