@@ -227,23 +227,6 @@ export async function togglePremiumContent(id: string, currentlyPremium: boolean
 }
 
 /**
- * Fetches a publicly shared content item by slug.
- * Works for anonymous visitors via the public_shared_content view.
- */
-export async function getPublicSharedContentBySlug(slug: string): Promise<ContentItem | null> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("public_shared_content")
-    .select("*")
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (error) throw new Error(error.message);
-  return data as ContentItem | null;
-}
-
-/**
  * Admin-only: toggle whether a published item is publicly shareable at /share/[slug].
  */
 export async function togglePublicContent(

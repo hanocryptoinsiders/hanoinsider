@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Clock, Gift } from "lucide-react";
 import { RichReader } from "@/lib/rich-text";
 import { estimateReadingMinutes } from "@/lib/content-body";
-import type { ContentItem } from "@/lib/content";
+import type { PublicSharedContent } from "@/lib/content-public";
 
 interface PublicContentReaderProps {
-  item: ContentItem;
+  item: PublicSharedContent;
 }
 
 export function PublicContentReader({ item }: PublicContentReaderProps) {

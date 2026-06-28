@@ -3,37 +3,43 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LogoMark } from "@/components/LogoMark";
 import { PublicContentReader } from "@/components/public/PublicContentReader";
-import { getPublicSharedContentBySlug } from "@/lib/content";
+import { getPublicSharedContentBySlug } from "@/lib/content-public";
+
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const item = await getPublicSharedContentBySlug(slug);
+  try {
+    const { slug } = await params;
+    const item = await getPublicSharedContentBySlug(slug);
 
-  if (!item) {
-    return { title: "Content not found | Hano Insiders" };
+    if (!item) {
+      return { title: "Content not found | Hano Insiders" };
+    }
+
+    return {
+      title: `${item.title} | Hano Insiders`,
+      description: item.description || "Free crypto intelligence from Hano Insiders.",
+      openGraph: {
+        title: item.title,
+        description: item.description || undefined,
+        type: "article",
+        images: item.thumbnail_url ? [{ url: item.thumbnail_url }] : undefined,
+      },
+      twitter: {
+        card: item.thumbnail_url ? "summary_large_image" : "summary",
+        title: item.title,
+        description: item.description || undefined,
+        images: item.thumbnail_url ? [item.thumbnail_url] : undefined,
+      },
+      robots: { index: true, follow: true },
+    };
+  } catch {
+    return { title: "Hano Insiders" };
   }
-
-  return {
-    title: `${item.title} | Hano Insiders`,
-    description: item.description || "Free crypto intelligence from Hano Insiders.",
-    openGraph: {
-      title: item.title,
-      description: item.description || undefined,
-      type: "article",
-      images: item.thumbnail_url ? [{ url: item.thumbnail_url }] : undefined,
-    },
-    twitter: {
-      card: item.thumbnail_url ? "summary_large_image" : "summary",
-      title: item.title,
-      description: item.description || undefined,
-      images: item.thumbnail_url ? [item.thumbnail_url] : undefined,
-    },
-    robots: { index: true, follow: true },
-  };
 }
 
 export default async function PublicSharePage({ params }: PageProps) {
