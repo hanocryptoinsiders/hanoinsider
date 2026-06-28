@@ -25,9 +25,3 @@ export function getSiteUrl(): string {
   // Local development fallback
   return "http://localhost:3000";
 }
-
-/** Absolute URL for a publicly shared content item at /share/[slug]. */
-export function getPublicShareUrl(slug: string): string {
-  const clean = slug.replace(/^\/+|\/+$/g, "");
-  return `${getSiteUrl()}/share/${clean}`;
-}

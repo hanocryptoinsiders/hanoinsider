@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Clock, Heart, MessageCircle, Bookmark, Share2, Lock } from "lucide-react";
+import { ArrowLeft, Clock, Heart, MessageCircle, Bookmark, Lock } from "lucide-react";
 import { CATALOGS, type Section } from "@/lib/content-catalog";
 import { RichReader } from "@/lib/rich-text";
 import { useTier } from "@/lib/tier-context";
@@ -62,9 +62,6 @@ export default function ReaderPage({ params }: { params: Promise<{ section: stri
         <div className="flex items-center gap-1">
           <button onClick={() => setSaved((v) => !v)} className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs hover:bg-accent ${saved ? "text-foreground" : "text-muted-foreground"}`}>
             <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}
-          </button>
-          <button className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">
-            <Share2 className="h-3.5 w-3.5" /> Share
           </button>
         </div>
       </div>

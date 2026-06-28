@@ -16,9 +16,6 @@ import {
   StarOff,
   ExternalLink,
   RefreshCw,
-  Globe,
-  Lock,
-  Copy,
   Upload,
   Loader2,
   CheckCircle2,
@@ -36,12 +33,10 @@ import {
   publishContentItem,
   archiveContentItem,
   togglePremiumContent,
-  togglePublicContent,
   type ContentItem,
 } from "@/lib/content";
 import { uploadContentThumbnail } from "@/lib/content-upload";
 import { getCoinPickerOptions, type CoinPickerOption } from "@/lib/market.functions";
-import { getPublicShareUrl } from "@/lib/site-url";
 import { toast } from "sonner";
 
 const categories = ["Macro", "Bitcoin", "Ethereum", "Altcoins", "On-chain", "Education", "Trading"];
@@ -267,44 +262,6 @@ export default function AdminContent() {
       loadItems();
     } catch (err: any) {
       toast.error(err.message || "Failed to toggle visibility");
-    }
-  };
-
-  const publicLinkFor = (slug: string) => getPublicShareUrl(slug);
-
-  const handleTogglePublic = async (id: string, currentlyPublic: boolean, type: string) => {
-    try {
-      const result = await togglePublicContent(id, !currentlyPublic, type);
-      if (result.is_public) {
-        try {
-          await navigator.clipboard.writeText(publicLinkFor(result.slug));
-          toast.success("Public link copied.");
-        } catch {
-          toast.success("Made public · share link ready");
-        }
-      } else {
-        toast.success("Set to private");
-      }
-      loadItems();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update public status");
-    }
-  };
-
-  const handleCopyPublicLink = async (item: ContentItem) => {
-    if (!item.is_public) {
-      toast.error("Make this content public before copying a share link.");
-      return;
-    }
-    if (!item.slug?.trim()) {
-      toast.error("This item has no slug yet.");
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(publicLinkFor(item.slug));
-      toast.success("Public link copied.");
-    } catch {
-      toast.error("Could not copy link");
     }
   };
 
@@ -849,11 +806,6 @@ export default function AdminContent() {
                     <td className="px-5 py-3.5 max-w-[260px]">
                       <span className="font-medium text-foreground flex items-center gap-1.5">
                         <span className="truncate">{c.title}</span>
-                        {c.is_public && (
-                          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-sky-500/15 text-sky-400 border border-sky-500/20 px-1.5 py-0.5 text-[9px] font-mono tracking-wider">
-                            <Globe className="h-2.5 w-2.5" /> PUBLIC
-                          </span>
-                        )}
                       </span>
                       <span className="text-[10px] font-mono text-muted-foreground block truncate mt-0.5">
                         /{c.content_type}s/{c.slug}
@@ -951,34 +903,6 @@ export default function AdminContent() {
                           ) : (
                             <StarOff className="h-3.5 w-3.5" />
                           )}
-                        </button>
-
-                        {/* Toggle Public / Private share */}
-                        <button
-                          onClick={() => handleTogglePublic(c.id, !!c.is_public, c.content_type)}
-                          title={c.is_public ? "Make Private" : "Make Public (shareable)"}
-                          className={`rounded p-1.5 hover:bg-accent transition ${
-                            c.is_public
-                              ? "text-sky-400"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          {c.is_public ? (
-                            <Globe className="h-3.5 w-3.5" />
-                          ) : (
-                            <Lock className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-
-                        {/* Copy public link (only when public) */}
-                        <button
-                          onClick={() => handleCopyPublicLink(c)}
-                          title={c.is_public ? "Copy public link" : "Make public to copy a share link"}
-                          className={`rounded p-1.5 hover:bg-accent transition ${
-                            c.is_public ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground/50"
-                          }`}
-                        >
-                          <Copy className="h-3.5 w-3.5" />
                         </button>
 
                         {/* View live page (published only) */}

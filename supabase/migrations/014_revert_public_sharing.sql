@@ -1,6 +1,16 @@
--- Expose is_public on published_content so dashboard readers can share public links.
+-- Revert public content sharing (migration 009 / 013).
+
+drop view if exists public.public_shared_content;
+
+drop policy if exists "content_items_read_public_anon" on public.content_items;
+
+drop index if exists public.idx_content_items_is_public;
 
 drop view if exists public.published_content;
+
+alter table public.content_items
+  drop column if exists is_public;
+
 create view public.published_content
 with (security_invoker = true)
 as
@@ -14,7 +24,6 @@ select
   category,
   tags,
   is_premium,
-  is_public,
   status,
   published_at,
   created_at,

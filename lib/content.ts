@@ -4,8 +4,25 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin, getCurrentProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-export type { ContentItem } from "@/lib/content-types";
-import type { ContentItem } from "@/lib/content-types";
+export interface ContentItem {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  body: string | null;
+  thumbnail_url: string | null;
+  content_type: "insight" | "article" | "video";
+  category: string | null;
+  tags: string[];
+  is_premium: boolean;
+  status: "draft" | "published" | "archived";
+  video_url: string | null;
+  related_coin_slug?: string | null;
+  author_id: string | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 // ������ Helpers ������������������������������������������������������������������������������������������������������������������
 
@@ -35,14 +52,13 @@ export async function getContentItems(type?: "insight" | "article" | "video", ad
   const supabase = await createClient();
 
   const columns =
-    "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, is_public, status, published_at, created_at, related_coin_slug";
-  const adminColumns = `${columns}, is_public`;
+    "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, status, published_at, created_at, related_coin_slug";
 
   if (adminMode) {
     // 1. Double check admin privilege on the server
     await requireAdmin();
     
-    let query = supabase.from("content_items").select(adminColumns).order("created_at", { ascending: false });
+    let query = supabase.from("content_items").select(columns).order("created_at", { ascending: false });
     if (type) {
       query = query.eq("content_type", type);
     }
@@ -206,42 +222,5 @@ export async function togglePremiumContent(id: string, currentlyPremium: boolean
 
   revalidatePath("/admin/content");
   revalidatePath(`/dashboard/${contentType}s`);
-}
-
-/**
- * Admin-only: toggle an item's public-share status.
- * Making an item public also publishes it (the public route requires
- * status = 'published'), so the shareable link works immediately.
- * Returns the updated row (including the slug) for building the share link.
- */
-export async function togglePublicContent(
-  id: string,
-  makePublic: boolean,
-  contentType: string,
-): Promise<{ slug: string; is_public: boolean; status: string }> {
-  await requireAdmin();
-  const supabase = await createClient();
-
-  const updatePayload: Record<string, unknown> = { is_public: makePublic };
-  if (makePublic) {
-    updatePayload.status = "published";
-    updatePayload.published_at = new Date().toISOString();
-  }
-
-  const { data: item, error } = await supabase
-    .from("content_items")
-    .update(updatePayload)
-    .eq("id", id)
-    .select("slug, is_public, status, published_at")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  revalidatePath("/admin/content");
-  revalidatePath(`/dashboard/${contentType}s`);
-  revalidatePath(`/share/${item.slug}`);
-  return { slug: item.slug, is_public: item.is_public, status: item.status };
 }
 

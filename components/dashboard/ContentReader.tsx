@@ -2,15 +2,13 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, Clock, Heart, MessageCircle, Bookmark, Share2, Lock, Trash2, Send, MessageSquare, Coins } from "lucide-react";
+import { ArrowLeft, Clock, Heart, MessageCircle, Bookmark, Lock, Trash2, Send, MessageSquare, Coins } from "lucide-react";
 import { RichReader } from "@/lib/rich-text";
 import { estimateReadingMinutes } from "@/lib/content-body";
 import type { ContentItem } from "@/lib/content";
 import { findCoinProfile } from "@/lib/coin-profiles";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { getPublicShareUrl } from "@/lib/site-url";
-import { copyOrShareUrl } from "@/lib/share-content";
 import { toast } from "sonner";
 
 /**
@@ -50,8 +48,6 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isLoadingLikesComments, setIsLoadingLikesComments] = useState(true);
   const [commentsError, setCommentsError] = useState<string | null>(null);
-  const [isSharing, setIsSharing] = useState(false);
-  const [canShare, setCanShare] = useState(item.is_public === true);
   const [discussionReloadKey, setDiscussionReloadKey] = useState(0);
 
   const actionBtn =
@@ -68,33 +64,6 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
 
   const readingTime = item.body ? estimateReadingMinutes(item.body) : 5;
   const relatedCoin = item.related_coin_slug ? findCoinProfile(item.related_coin_slug) : undefined;
-
-  useEffect(() => {
-    if (item.is_public === true) {
-      setCanShare(true);
-      return;
-    }
-    if (!item.slug?.trim()) {
-      setCanShare(false);
-      return;
-    }
-
-    let cancelled = false;
-    void (async () => {
-      const { data } = await supabase
-        .from("public_shared_content")
-        .select("slug")
-        .eq("slug", item.slug)
-        .maybeSingle();
-      if (!cancelled) {
-        setCanShare(!!data);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [item.is_public, item.slug, supabase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -295,23 +264,6 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
     }
   };
 
-  const handleShare = async () => {
-    if (!item.slug?.trim() || !canShare) return;
-
-    setIsSharing(true);
-    const url = getPublicShareUrl(item.slug);
-    const result = await copyOrShareUrl(item.title, url);
-    setIsSharing(false);
-
-    if (result === "copied") {
-      toast.success("Public link copied.");
-    } else if (result === "shared") {
-      toast.success("Link shared.");
-    } else if (result === "failed") {
-      toast.error("Could not copy link.");
-    }
-  };
-
   const scrollToComments = () => {
     const el = document.getElementById("comments-section");
     if (el) {
@@ -444,18 +396,6 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
             <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} />
             {saved ? "Saved" : "Save"}
           </button>
-          {canShare && (
-            <button
-              type="button"
-              onClick={handleShare}
-              disabled={isSharing}
-              title="Copy public share link"
-              aria-label="Share public link"
-              className={`${actionBtn} ${actionBtnDefault} disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
-            >
-              <Share2 className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
       </div>
 
