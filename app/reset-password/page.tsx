@@ -1,13 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { LogoMark } from "@/components/LogoMark";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Eye, EyeOff, ShieldCheck, AlertTriangle, CheckCircle2, ArrowLeft } from "lucide-react";
 
 type PageState = "loading" | "ready" | "success" | "error";
+
+function clearRecoveryParams() {
+  window.history.replaceState(null, "", "/reset-password");
+}
+
+async function waitForHashSession(supabase: SupabaseClient) {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        !settled &&
+        session &&
+        (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "PASSWORD_RECOVERY")
+      ) {
+        settled = true;
+        subscription.unsubscribe();
+        resolve(true);
+      }
+    });
+
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!settled && user) {
+        settled = true;
+        subscription.unsubscribe();
+        resolve(true);
+      }
+    });
+
+    window.setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        subscription.unsubscribe();
+        resolve(false);
+      }
+    }, 4000);
+  });
+}
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -22,50 +61,79 @@ export default function ResetPassword() {
   const [fieldErrors, setFieldErrors] = useState<{ password?: string; confirm?: string }>({});
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Track if PASSWORD_RECOVERY event has fired
-  const recoveryReceived = useRef(false);
-
   useEffect(() => {
-    // Supabase fires PASSWORD_RECOVERY after the token is exchanged.
-    // The /auth/callback route already called verifyOtp, so by the time
-    // the user lands here, the session should already be a recovery session.
-    // We listen for it just in case the redirect happens before the event fires.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" && session) {
-        recoveryReceived.current = true;
-        setPageState("ready");
-      }
-      // Also handle the case where session is already active (SIGNED_IN after verifyOtp)
-      if (event === "SIGNED_IN" && session) {
-        recoveryReceived.current = true;
-        setPageState("ready");
-      }
-    });
+    let cancelled = false;
 
-    // Check for existing session immediately — verifyOtp in callback sets the session
-    // synchronously before redirect, so it should already be here.
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        recoveryReceived.current = true;
+    const fail = (message: string) => {
+      if (cancelled) return;
+      setErrorMessage(message);
+      setPageState("error");
+    };
+
+    const succeed = () => {
+      if (cancelled) return;
+      clearRecoveryParams();
+      setPageState("ready");
+    };
+
+    const establishSession = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const tokenHash = params.get("token_hash");
+      const type = params.get("type");
+      const hasHashTokens = window.location.hash.includes("access_token");
+
+      if (tokenHash && type === "recovery") {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+        if (cancelled) return;
+        if (error) {
+          fail("This reset link is invalid or expired. Please request a new password reset.");
+          return;
+        }
+        succeed();
+        return;
+      }
+
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (cancelled) return;
+        if (error) {
+          fail("This reset link is invalid or expired. Please request a new password reset.");
+          return;
+        }
+        succeed();
+        return;
+      }
+
+      if (hasHashTokens) {
+        const hasSession = await waitForHashSession(supabase);
+        if (cancelled) return;
+        if (hasSession) {
+          succeed();
+          return;
+        }
+        fail("This reset link is invalid or expired. Please request a new password reset.");
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (user) {
         setPageState("ready");
         return;
       }
 
-      // If no session after 4 seconds, the link was likely expired/invalid
-      setTimeout(() => {
-        if (!recoveryReceived.current) {
-          setPageState("error");
-          setErrorMessage(
-            "This reset link is invalid or expired. Please request a new password reset."
-          );
-        }
-      }, 4000);
+      fail("This reset link is invalid or expired. Please request a new password reset.");
     };
 
-    checkSession();
+    void establishSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+    };
   }, [supabase]);
 
   // Password strength

@@ -112,7 +112,7 @@ function LoginContent() {
 
     setIsResetting(true);
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${getSiteUrl()}/auth/callback?next=/reset-password`,
+      redirectTo: `${getSiteUrl()}/reset-password`,
     });
     setIsResetting(false);
 
