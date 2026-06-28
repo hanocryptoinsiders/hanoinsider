@@ -1,7 +1,11 @@
-import Link from "next/link";
+"use client";
+
 import Image from "next/image";
+import { useSectionScroll } from "./useSectionScroll";
 
 export function BottomCTA() {
+  const scrollToPricing = useSectionScroll("pricing");
+
   return (
     <section className="bottom-cta-section" data-m-reveal>
       <div className="bottom-cta-inner">
@@ -24,9 +28,9 @@ export function BottomCTA() {
             </p>
           </div>
         </div>
-        <Link href="/#pricing" className="bottom-cta-btn cta-gradient">
+        <button type="button" onClick={scrollToPricing} className="bottom-cta-btn cta-gradient">
           Join Now <span className="arr">→</span>
-        </Link>
+        </button>
       </div>
     </section>
   );

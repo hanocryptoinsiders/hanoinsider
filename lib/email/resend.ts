@@ -11,7 +11,7 @@
  *                      until the key is configured.
  *   EMAIL_FROM       — "Display Name <address@verified-domain>". Must be a Resend
  *                      VERIFIED domain. Defaults to the verified hanoinsiders.com.
- *   EMAIL_REPLY_TO   — address replies go to. Defaults to hannah@hanoanimations.com.
+ *   EMAIL_REPLY_TO   — address replies go to. Defaults to hi@hanoinsiders.com.
  */
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
@@ -39,11 +39,11 @@ export type SendEmailResult = {
  * "Hannah <hannah@hanoanimations.com>" once that domain is verified in Resend.
  */
 export function getDefaultFrom(): string {
-  return process.env.EMAIL_FROM || "Hano Insiders <hannah@hanoinsiders.com>";
+  return process.env.EMAIL_FROM || "Hano Insiders <hi@hanoinsiders.com>";
 }
 
 export function getDefaultReplyTo(): string {
-  return process.env.EMAIL_REPLY_TO || "hannah@hanoanimations.com";
+  return process.env.EMAIL_REPLY_TO || "hi@hanoinsiders.com";
 }
 
 export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {

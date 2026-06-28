@@ -1,33 +1,17 @@
 /**
  * app/admin/subscriptions/page.tsx
  *
- * Server Component — fetches real subscription data from Supabase.
+ * Server Component — fetches real subscription data via service role.
  * Admins only (enforced by parent layout).
  */
 
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import AdminSubscriptionsClient from "./AdminSubscriptionsClient";
 import { AdminOverviewSkeleton } from "@/components/loading/skeletons";
+import { fetchAdminSubscriptions, type SubscriptionRow } from "./actions";
 
-export type SubscriptionRow = {
-  id: string;
-  user_id: string;
-  provider: string;
-  provider_subscription_id: string | null;
-  provider_customer_id: string | null;
-  plan_type: string | null;
-  status: string;
-  current_period_end: string | null;
-  cancel_at_period_end: boolean;
-  created_at: string;
-  // Joined from profiles
-  user_email: string | null;
-  user_name: string | null;
-  is_premium: boolean;
-  premium_source: string | null;
-};
+export type { SubscriptionRow };
 
 export default function AdminSubscriptions() {
   return (
@@ -41,59 +25,15 @@ export default function AdminSubscriptions() {
 }
 
 async function SubscriptionsDataFetcher() {
-  const supabase = await createClient();
+  const { rows, error } = await fetchAdminSubscriptions();
 
-  // Fetch all subscriptions joined with profile data
-  const { data: subscriptions, error } = await supabase
-    .from("subscriptions")
-    .select(`
-      id,
-      user_id,
-      provider,
-      provider_subscription_id,
-      provider_customer_id,
-      plan_type,
-      status,
-      current_period_end,
-      cancel_at_period_end,
-      created_at,
-      profiles!user_id (
-        email,
-        full_name,
-        is_premium,
-        premium_source
-      )
-    `)
-    .order("created_at", { ascending: false })
-    .range(0, 99); // Limiting to 100 for performance as requested
-  const rows: SubscriptionRow[] = (subscriptions ?? []).map((s: Record<string, unknown>) => {
-    const profile = s.profiles as Record<string, unknown> | null;
-    return {
-      id: s.id as string,
-      user_id: s.user_id as string,
-      provider: (s.provider as string) || "stripe",
-      provider_subscription_id: s.provider_subscription_id as string | null,
-      provider_customer_id: s.provider_customer_id as string | null,
-      plan_type: s.plan_type as string | null,
-      status: (s.status as string) || "unknown",
-      current_period_end: s.current_period_end as string | null,
-      cancel_at_period_end: (s.cancel_at_period_end as boolean) || false,
-      created_at: s.created_at as string,
-      user_email: (profile?.email as string) ?? null,
-      user_name: (profile?.full_name as string) ?? null,
-      is_premium: (profile?.is_premium as boolean) ?? false,
-      premium_source: (profile?.premium_source as string) ?? null,
-    };
-  });
-
-  // Compute summary analytics
-  const activeRows = rows.filter((r) => r.status === "active");
+  const activeRows = rows.filter((r) => r.status === "active" || r.status === "paid");
   const monthlyActive = activeRows.filter((r) => r.plan_type === "monthly");
   const quarterlyActive = activeRows.filter((r) => r.plan_type === "quarterly");
   const yearlyActive = activeRows.filter((r) => r.plan_type === "yearly");
 
   const cancelledLast30 = rows.filter((r) => {
-    if (r.status !== "cancelled") return false;
+    if (r.status !== "cancelled" && r.status !== "canceled") return false;
     const d = new Date(r.created_at);
     return Date.now() - d.getTime() < 30 * 24 * 60 * 60 * 1000;
   }).length;
@@ -104,14 +44,18 @@ async function SubscriptionsDataFetcher() {
       : "0.0";
 
   const analytics = [
-    { l: "ACTIVE SUBS", v: `${activeRows.length}`, sub: "Active subscriptions" },
+    { l: "ACTIVE SUBS", v: `${activeRows.length}`, sub: "Active paid subscriptions" },
     { l: "MONTHLY / QUARTERLY", v: `${monthlyActive.length} / ${quarterlyActive.length}`, sub: "Monthly / Quarterly plans" },
     { l: "YEARLY", v: `${yearlyActive.length}`, sub: "Yearly plans" },
     { l: "CHURN (30D)", v: `${churnRate}%`, sub: "Cancellations in last 30 days" },
   ];
 
   if (error) {
-    console.error("[admin/subscriptions] fetch error:", error.message);
+    return (
+      <div className="panel p-6 text-sm text-destructive">
+        Failed to load subscription data: {error}
+      </div>
+    );
   }
 
   return (

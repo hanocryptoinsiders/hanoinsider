@@ -11,6 +11,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { User } from "@supabase/supabase-js";
+import { hasActiveSubscription } from "@/lib/subscription-access";
 
 // ������ Types ����������������������������������������������������������������������������������������������������������������������������������������
 
@@ -38,19 +39,7 @@ function isDevDashboardBypassEnabled() {
   return process.env.NODE_ENV === "development" && process.env.DEV_AUTH_BYPASS !== "false";
 }
 
-export function hasActiveSubscription(profile: Pick<UserProfile, "role" | "is_premium" | "subscription_status" | "subscription_current_period_end"> | null): boolean {
-  if (!profile) return false;
-  if (profile.role === "admin") return true;
-  if (profile.is_premium !== true && profile.role !== "premium") return false;
-  if (profile.subscription_status && ["expired", "cancelled", "canceled", "past_due", "inactive"].includes(profile.subscription_status)) {
-    return false;
-  }
-  if (profile.subscription_current_period_end) {
-    const periodEnd = new Date(profile.subscription_current_period_end).getTime();
-    if (Number.isFinite(periodEnd) && periodEnd < Date.now()) return false;
-  }
-  return true;
-}
+export { hasActiveSubscription } from "@/lib/subscription-access";
 
 // ������ Core Helpers ��������������������������������������������������������������������������������������������������������������������������
 

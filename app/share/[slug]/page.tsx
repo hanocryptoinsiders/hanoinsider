@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Clock } from "lucide-react";
 import { getPublicContentBySlug } from "@/lib/content";
 import { RichReader } from "@/lib/rich-text";
+import { estimateReadingMinutes } from "@/lib/content-body";
 import { HanoWordmark } from "@/components/brand/HanoWordmark";
 
 interface PageProps {
@@ -54,7 +55,7 @@ export default async function PublicSharePage({ params }: PageProps) {
   // Anything that is missing, private, unpublished, or draft resolves to 404.
   if (!item) notFound();
 
-  const readingTime = item.body ? Math.max(1, Math.ceil(item.body.split(/\s+/).length / 200)) : 3;
+  const readingTime = item.body ? estimateReadingMinutes(item.body) : 3;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

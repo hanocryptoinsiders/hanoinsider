@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
+import { sendWelcomeEmailIfNeeded } from "@/lib/email/send-welcome";
+import { normalizeEmail } from "@/lib/payments";
 
 export const runtime = "nodejs";
 
@@ -53,6 +55,18 @@ export async function POST(request: Request) {
         // Persist the paid customer FIRST — this is the source of truth that
         // later gates registration eligibility and dashboard access.
         await recordPaidCustomer(supabase, session);
+        if (session.payment_status === "paid" || session.payment_status === "no_payment_required") {
+          const meta = session.metadata ?? {};
+          const rawEmail = meta.email || session.customer_details?.email || session.customer_email || "";
+          if (rawEmail) {
+            await sendWelcomeEmailIfNeeded(supabase, {
+              email: normalizeEmailLocal(rawEmail),
+              firstName: meta.first_name || null,
+              planId: meta.plan_id || meta.plan_type || null,
+              checkoutSessionId: session.id,
+            });
+          }
+        }
         if (session.mode === "subscription" && session.subscription) {
           const subscriptionId =
             typeof session.subscription === "string" ? session.subscription : session.subscription.id;
@@ -86,8 +100,8 @@ export async function POST(request: Request) {
   }
 }
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
+function normalizeEmailLocal(email: string) {
+  return normalizeEmail(email);
 }
 
 /**
@@ -102,7 +116,7 @@ async function recordPaidCustomer(supabase: SB, session: Stripe.Checkout.Session
     console.error("[stripe/webhook] checkout.session.completed missing email:", session.id);
     return;
   }
-  const email = normalizeEmail(rawEmail);
+  const email = normalizeEmailLocal(rawEmail);
 
   const customerId =
     typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
@@ -134,13 +148,12 @@ async function recordPaidCustomer(supabase: SB, session: Stripe.Checkout.Session
 }
 
 async function syncStripeSubscription(supabase: SB, subscription: Stripe.Subscription, event: Stripe.Event) {
-  const sub = subscription as any;
-  const userId = await findUserIdForSubscription(supabase, subscription);
-  if (!userId) {
-    console.error("[stripe/webhook] Could not map subscription to a user:", subscription.id);
-    return;
-  }
-
+  const sub = subscription as Stripe.Subscription & {
+    current_period_start?: number;
+    current_period_end?: number;
+    trial_start?: number | null;
+    trial_end?: number | null;
+  };
   const customerId = typeof subscription.customer === "string"
     ? subscription.customer
     : subscription.customer.id;
@@ -150,6 +163,36 @@ async function syncStripeSubscription(supabase: SB, subscription: Stripe.Subscri
   const periodStart = unixToIso(sub.current_period_start);
   const periodEnd = unixToIso(sub.current_period_end);
   const active = isActiveStripeStatus(status);
+
+  const userId = await findUserIdForSubscription(supabase, subscription);
+
+  // Always persist subscription snapshot on paid_customers (covers pre-registration payments).
+  const customerEmail = await resolveStripeCustomerEmail(customerId);
+  if (customerEmail) {
+    await supabase
+      .from("paid_customers")
+      .update({
+        stripe_subscription_id: subscription.id,
+        subscription_status: status,
+        subscription_current_period_end: periodEnd,
+        payment_status: active ? "paid" : status,
+      })
+      .eq("email", customerEmail);
+  } else {
+    await supabase
+      .from("paid_customers")
+      .update({
+        stripe_subscription_id: subscription.id,
+        subscription_status: status,
+        subscription_current_period_end: periodEnd,
+      })
+      .eq("stripe_customer_id", customerId);
+  }
+
+  if (!userId) {
+    console.warn("[stripe/webhook] Subscription recorded on paid_customers; user not registered yet:", subscription.id);
+    return;
+  }
 
   await supabase.from("subscriptions").upsert(
     {
@@ -196,6 +239,27 @@ async function syncStripeSubscription(supabase: SB, subscription: Stripe.Subscri
       premium_source: "stripe",
     })
     .eq("id", userId);
+
+  await supabase
+    .from("paid_customers")
+    .update({
+      payment_status: active ? "paid" : status,
+      stripe_subscription_id: subscription.id,
+      subscription_status: status,
+      subscription_current_period_end: periodEnd,
+    })
+    .eq("user_id", userId);
+}
+
+async function resolveStripeCustomerEmail(customerId: string): Promise<string | null> {
+  try {
+    const customer = await getStripe().customers.retrieve(customerId);
+    if (customer.deleted) return null;
+    const email = customer.email;
+    return email ? normalizeEmailLocal(email) : null;
+  } catch {
+    return null;
+  }
 }
 
 async function findUserIdForSubscription(supabase: SB, subscription: Stripe.Subscription) {
@@ -205,13 +269,38 @@ async function findUserIdForSubscription(supabase: SB, subscription: Stripe.Subs
     ? subscription.customer
     : subscription.customer.id;
 
-  const { data } = await supabase
+  const { data: profileByCustomer } = await supabase
     .from("profiles")
     .select("id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
+  if (profileByCustomer?.id) return profileByCustomer.id;
 
-  return data?.id ?? null;
+  const { data: paidByCustomer } = await supabase
+    .from("paid_customers")
+    .select("user_id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+  if (paidByCustomer?.user_id) return paidByCustomer.user_id;
+
+  const email = await resolveStripeCustomerEmail(customerId);
+  if (email) {
+    const { data: paidByEmail } = await supabase
+      .from("paid_customers")
+      .select("user_id")
+      .eq("email", email)
+      .maybeSingle();
+    if (paidByEmail?.user_id) return paidByEmail.user_id;
+
+    const { data: profileByEmail } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    if (profileByEmail?.id) return profileByEmail.id;
+  }
+
+  return null;
 }
 
 function inferPlanType(interval?: string | null) {

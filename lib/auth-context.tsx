@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import { hasActiveSubscription } from "@/lib/subscription-access";
 
 export type UserRole = "guest" | "free" | "premium" | "admin";
 
@@ -52,7 +53,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // Mock profiles for dev/demo only
 const makeMockProfiles = (): Record<UserRole, UserProfile> => ({
   guest:   { id: "guest-id",   full_name: "Guest Visitor",       email: null,                    avatar_url: null, role: "guest",   is_premium: false, subscription_status: "inactive", created_at: new Date().toISOString() },
-  free:    { id: "free-id",    full_name: "Free Member",         email: "member@hanoinsiders.com",   avatar_url: null, role: "free",    is_premium: false, subscription_status: "active",   created_at: new Date().toISOString() },
+  free:    { id: "free-id",    full_name: "Expired Member",      email: "member@hanoinsiders.com",   avatar_url: null, role: "free",    is_premium: false, subscription_status: "expired",  created_at: new Date().toISOString() },
   premium: { id: "prem-id",    full_name: "Hano Insiders Member",        email: "member@hanoinsiders.com",      avatar_url: null, role: "premium", is_premium: true,  subscription_status: "active",   created_at: new Date().toISOString() },
   admin:   { id: "admin-id",   full_name: "The Hano Insiders Admin",  email: "admin@hanoinsiders.com",    avatar_url: null, role: "admin",   is_premium: true,  subscription_status: "active",   created_at: new Date().toISOString() },
 });
@@ -289,7 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const effectiveProfile = isMockMode ? mockProfiles[mockRole] : profile;
   const isPremium = isMockMode
     ? mockProfiles[mockRole].is_premium
-    : (profile?.is_premium === true || effectiveRole === "premium" || effectiveRole === "admin");
+    : hasActiveSubscription(effectiveProfile);
 
   return (
     <AuthContext.Provider

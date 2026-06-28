@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useSectionScroll } from "./useSectionScroll";
 
 const contentTags = [
   "Dashboard", "Market overview", "Insights", "Articles", "Affiliate",
@@ -9,6 +9,8 @@ const contentTags = [
 ];
 
 export function About() {
+  const scrollToPricing = useSectionScroll("pricing");
+
   return (
     <section id="about" className="landing-section">
       <div className="about-layout">
@@ -26,9 +28,9 @@ export function About() {
             No signals. No anonymous calls. Just structured intelligence.
           </p>
           <div className="about-cta-row">
-            <Link href="/#pricing" className="cta-primary">
+            <button type="button" onClick={scrollToPricing} className="cta-primary">
               Start Your Edge <span className="arr">→</span>
-            </Link>
+            </button>
           </div>
         </div>
 

@@ -49,6 +49,12 @@ export function findCoinProfile(idOrSymbol: string) {
   return coinProfiles.find((coin) => coin.id === needle || coin.symbol.toLowerCase() === needle || coin.name.toLowerCase() === needle);
 }
 
+/** Stable slug for linking CMS content to /dashboard/coins/[slug]. */
+export function coinSlugForLink(symbol: string, name?: string): string {
+  const profile = findCoinProfile(symbol) || (name ? findCoinProfile(name) : undefined);
+  return profile?.id ?? symbol.toLowerCase();
+}
+
 /**
  * Returns an educational description for a coin. Uses the curated profile summary
  * when available, otherwise builds a neutral, non-advisory fallback so every one

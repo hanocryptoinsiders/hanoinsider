@@ -59,7 +59,7 @@ export function UserList({ initialUsers, currentAdminId }: UserListProps) {
     const matchesPremium =
       selectedPremiumFilter === "all" ||
       (selectedPremiumFilter === "premium" && u.is_premium) ||
-      (selectedPremiumFilter === "free" && !u.is_premium);
+      (selectedPremiumFilter === "expired" && !u.is_premium);
 
     const matchesStatus =
       selectedStatusFilter === "all" ||
@@ -184,7 +184,7 @@ export function UserList({ initialUsers, currentAdminId }: UserListProps) {
               onChange={(e) => setSelectedRoleFilter(e.target.value)}
             >
               <option value="all">All Roles</option>
-              <option value="free">Free</option>
+              <option value="free">Inactive (no access)</option>
               <option value="premium">Premium</option>
               <option value="admin">Admin</option>
             </select>
@@ -197,9 +197,9 @@ export function UserList({ initialUsers, currentAdminId }: UserListProps) {
               value={selectedPremiumFilter}
               onChange={(e) => setSelectedPremiumFilter(e.target.value)}
             >
-              <option value="all">All Tiers</option>
-              <option value="premium">Premium Status</option>
-              <option value="free">Free Status</option>
+              <option value="all">All access</option>
+              <option value="premium">Active subscribers</option>
+              <option value="expired">Expired access</option>
             </select>
           </div>
 

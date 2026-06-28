@@ -204,8 +204,8 @@ export function BuyModal({
                   {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
                 </span>
                 <span className="flex-1">
-                  <span className="block text-sm font-semibold text-white">Card / Normal payment</span>
-                  <span className="block text-xs text-white/45">Secure checkout via Stripe — cards & more</span>
+                  <span className="block text-sm font-semibold text-white">Card & Wallets — Apple Pay, PayPal, Amazon Pay & cards</span>
+                  <span className="block text-xs text-white/45">Secure checkout via Stripe</span>
                 </span>
                 <span className="text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/60">→</span>
               </button>

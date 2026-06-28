@@ -19,7 +19,6 @@ import {
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { TierProvider } from "@/lib/tier-context";
 import { useAuth } from "@/lib/auth-context";
-import { FreeAccessProvider } from "@/lib/free-access-context";
 import { QuoteProvider } from "@/lib/quote-context";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { RouteProgress } from "@/components/navigation/route-progress";
@@ -343,11 +342,9 @@ function Shell({ children }: { children: ReactNode }) {
 export function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <TierProvider>
-      <FreeAccessProvider>
-        <QuoteProvider>
-          <Shell>{children}</Shell>
-        </QuoteProvider>
-      </FreeAccessProvider>
+      <QuoteProvider>
+        <Shell>{children}</Shell>
+      </QuoteProvider>
     </TierProvider>
   );
 }

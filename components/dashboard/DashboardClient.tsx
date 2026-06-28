@@ -7,7 +7,6 @@ import { useQuote } from "@/lib/quote-context";
 import { Sparkline } from "@/components/dashboard/Sparkline";
 import { LockOverlay } from "@/components/dashboard/LockOverlay";
 import { useTier } from "@/lib/tier-context";
-import { useFreeAccess } from "@/lib/free-access-context";
 import { useMarketSnapshot, useCoinHistory, fmtUsd, fmtPct } from "@/lib/market-hooks";
 import { CoinLogo } from "@/components/CoinLogo";
 import type { ContentItem } from "@/lib/content";
@@ -83,7 +82,6 @@ interface DashboardClientProps {
 
 export function DashboardClient({ initialInsights, initialSnap, fngData, heroBanner }: DashboardClientProps) {
   const { isFree, upgrade } = useTier();
-  const fa = useFreeAccess();
   const quote = useQuote();
 
   // Clean up any stale checkout flags on mount

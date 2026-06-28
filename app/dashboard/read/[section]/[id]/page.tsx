@@ -7,7 +7,6 @@ import { ArrowLeft, Clock, Heart, MessageCircle, Bookmark, Share2, Lock } from "
 import { CATALOGS, type Section } from "@/lib/content-catalog";
 import { RichReader } from "@/lib/rich-text";
 import { useTier } from "@/lib/tier-context";
-import { useFreeAccess } from "@/lib/free-access-context";
 
 export default function ReaderPage({ params }: { params: Promise<{ section: string; id: string }> }) {
   const { section, id } = React.use(params);
@@ -16,8 +15,7 @@ export default function ReaderPage({ params }: { params: Promise<{ section: stri
   if (!item) notFound();
 
   const { isFree, upgrade } = useTier();
-  const fa = useFreeAccess();
-  const locked = isFree && section !== "videos" && !fa.isFreeUnlocked(section as "insights" | "articles", item.id);
+  const locked = isFree && section !== "videos";
 
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);

@@ -19,6 +19,8 @@ export interface ContentItem {
   is_public?: boolean;
   status: "draft" | "published" | "archived";
   video_url: string | null;
+  /** Optional slug linking to /dashboard/coins/[slug] (e.g. bitcoin, ethereum). */
+  related_coin_slug?: string | null;
   author_id: string | null;
   published_at: string | null;
   created_at: string;
@@ -52,7 +54,8 @@ export async function canViewFullContent(item: { is_premium: boolean }): Promise
 export async function getContentItems(type?: "insight" | "article" | "video", adminMode = false): Promise<ContentItem[]> {
   const supabase = await createClient();
 
-  const columns = "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, status, published_at, created_at";
+  const columns =
+    "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, status, published_at, created_at, related_coin_slug";
   const adminColumns = `${columns}, is_public`;
 
   if (adminMode) {

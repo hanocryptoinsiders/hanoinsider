@@ -13,10 +13,9 @@ import {
   Menu,
   Bell,
   Quote,
-  KeyRound,
+  Mail,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { FreeAccessProvider } from "@/lib/free-access-context";
 import { QuoteProvider } from "@/lib/quote-context";
 import { RouteProgress } from "@/components/navigation/route-progress";
 import { HanoWordmark } from "@/components/brand/HanoWordmark";
@@ -37,11 +36,11 @@ const operationsNav: NavItem[] = [
 
 const platformNav: NavItem[] = [
   { to: "/admin/notifications", icon: Bell, label: "Notifications" },
+  { to: "/admin/emails", icon: Mail, label: "Community email" },
   { to: "/admin/affiliates", icon: Gift, label: "Affiliates" },
 ];
 
 const deskNav: NavItem[] = [
-  { to: "/admin/free-access", icon: KeyRound, label: "Free access" },
   { to: "/admin/quote", icon: Quote, label: "Desk quote" },
 ];
 
@@ -51,8 +50,8 @@ const PAGE_META: Record<string, { title: string; sub?: string }> = {
   "/admin/content": { title: "Content", sub: "Insights, articles, and media." },
   "/admin/subscriptions": { title: "Subscriptions", sub: "Billing and plan status." },
   "/admin/notifications": { title: "Notifications", sub: "Broadcast alerts to members." },
+  "/admin/emails": { title: "Community email", sub: "Send updates to paid subscribers." },
   "/admin/affiliates": { title: "Affiliates", sub: "Referral partners and payouts." },
-  "/admin/free-access": { title: "Free access", sub: "Complimentary member access." },
   "/admin/quote": { title: "Desk quote", sub: "Dashboard hero voice and mascot." },
 };
 
@@ -194,10 +193,8 @@ function Shell({ children }: { children: ReactNode }) {
 /** Client-side admin panel shell — receives children from the Server Component layout. */
 export function AdminPanelUI({ children }: { children: React.ReactNode }) {
   return (
-    <FreeAccessProvider>
-      <QuoteProvider>
-        <Shell>{children}</Shell>
-      </QuoteProvider>
-    </FreeAccessProvider>
+    <QuoteProvider>
+      <Shell>{children}</Shell>
+    </QuoteProvider>
   );
 }

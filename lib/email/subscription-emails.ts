@@ -111,7 +111,7 @@ function renderLayout(opts: {
 export function buildSubscriptionEmail(type: SubscriptionEmailType, args: BuildArgs): BuiltEmail {
   const name = firstName(args.name);
   const endDate = formatDate(args.periodEnd);
-  const renewUrl = `${getSiteUrl()}/pricing`;
+  const renewUrl = `${getSiteUrl()}/?renew=1#pricing`;
 
   switch (type) {
     case "reminder_7": {
@@ -145,7 +145,7 @@ export function buildSubscriptionEmail(type: SubscriptionEmailType, args: BuildA
       const subject = `Your ${BRAND} membership expires today`;
       const bodyHtml = `Hi ${name},<br /><br />
         Your ${BRAND} membership expires <strong style="color:#ffffff;">today (${endDate})</strong>.<br /><br />
-        Renew now to keep your access active — once it lapses, your account will return to free access.`;
+        Renew now to keep your access active — once it lapses, dashboard access will be removed until you renew.`;
       const text = `Hi ${name},\n\nYour ${BRAND} membership expires today (${endDate}).\n\nRenew now to keep your access active: ${renewUrl}\n\nNeed help? Just reply to this email.\n\n— ${BRAND}`;
       return { subject, text, html: renderLayout({ preheader: `Your membership expires today`, heading: "Your membership expires today", bodyHtml, ctaLabel: "Renew now", ctaUrl: renewUrl }) };
     }
@@ -153,9 +153,9 @@ export function buildSubscriptionEmail(type: SubscriptionEmailType, args: BuildA
     case "expired": {
       const subject = `Your ${BRAND} membership has expired`;
       const bodyHtml = `Hi ${name},<br /><br />
-        Your ${BRAND} membership expired on <strong style="color:#ffffff;">${endDate}</strong> and your account has returned to free access.<br /><br />
+        Your ${BRAND} membership expired on <strong style="color:#ffffff;">${endDate}</strong>. Dashboard access has been removed until you renew.<br /><br />
         We'd love to have you back — renew anytime to instantly restore your full member access.`;
-      const text = `Hi ${name},\n\nYour ${BRAND} membership expired on ${endDate} and your account has returned to free access.\n\nRenew anytime to instantly restore full access: ${renewUrl}\n\nNeed help? Just reply to this email.\n\n— ${BRAND}`;
+      const text = `Hi ${name},\n\nYour ${BRAND} membership expired on ${endDate}. Dashboard access has been removed until you renew.\n\nRenew anytime to instantly restore full access: ${renewUrl}\n\nNeed help? Just reply to this email.\n\n— ${BRAND}`;
       return { subject, text, html: renderLayout({ preheader: `Your membership has expired`, heading: "Your membership has expired", bodyHtml, ctaLabel: "Reactivate membership", ctaUrl: renewUrl, footerNote: "Your data and settings are saved — renewing restores everything exactly as you left it." }) };
     }
   }

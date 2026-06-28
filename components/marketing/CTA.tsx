@@ -1,4 +1,10 @@
+"use client";
+
+import { useSectionScroll } from "./useSectionScroll";
+
 export function CTA() {
+  const scrollToPricing = useSectionScroll("pricing");
+
   return (
     <section id="desk" className="landing-section">
       <div className="sec-head" data-m-reveal>
@@ -37,12 +43,12 @@ export function CTA() {
       </div>
 
       <div className="cta-row" data-m-reveal data-m-reveal-delay="2">
-        <a href="#pricing" className="cta-primary">
+        <button type="button" onClick={scrollToPricing} className="cta-primary">
           Join Insiders <span className="arr">→</span>
-        </a>
-        <a href="#pricing" className="cta-secondary">
+        </button>
+        <button type="button" onClick={scrollToPricing} className="cta-secondary">
           View pricing details <span className="arr">→</span>
-        </a>
+        </button>
       </div>
     </section>
   );

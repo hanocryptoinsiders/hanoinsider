@@ -1,20 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { Suspense } from "react";
+import { Loader2, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
 import { getSiteUrl } from "@/lib/site-url";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isPremium } = useAuth();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
@@ -29,20 +28,27 @@ function LoginContent() {
   const [isResetting, setIsResetting] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  // Handle OAuth errors / success messages from URL
+  // Handle auth messages from URL
   useEffect(() => {
     const error = searchParams.get("error");
     if (error === "auth_failed") toast.error("Authentication failed. Please try again.");
-    if (error === "auth_callback_failed") toast.error("Verification failed or link expired. Please try again.");
-    if (searchParams.get("reset") === "true") toast.success("Password reset link sent! Check your inbox.");
+    if (error === "auth_callback_failed" || error === "link_expired") {
+      toast.error("Verification failed or link expired. Please try again.");
+    }
+    if (searchParams.get("reset") === "true") {
+      toast.success("Password updated successfully. Please sign in with your new password.");
+    }
+    if (searchParams.get("renewed") === "1") {
+      toast.success("Payment confirmed. Sign in to restore dashboard access.");
+    }
   }, [searchParams]);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated with active subscription
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && isPremium) {
       router.replace("/dashboard");
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, isPremium, router]);
 
   // Validate form
   const validate = (): boolean => {
@@ -67,7 +73,6 @@ function LoginContent() {
 
     if (error) {
       setIsSubmitting(false);
-      // Map Supabase errors to user-friendly messages
       if (error.message.includes("Invalid login credentials") || error.message.includes("invalid_grant")) {
         setFieldErrors({ password: "Incorrect email or password" });
       } else if (error.message.includes("Email not confirmed")) {
@@ -80,8 +85,21 @@ function LoginContent() {
       return;
     }
 
-    // onAuthStateChange will handle setting user + profile + router.refresh()
-    // Explicit router.replace here ensures immediate, reliable redirection
+    const statusRes = await fetch("/api/stripe/check-status");
+    const status = await statusRes.json().catch(() => ({ isPremium: false }));
+    if (!status.isPremium) {
+      try {
+        await fetch("/api/auth/signout", { method: "POST" });
+      } catch {
+        /* ignore */
+      }
+      await supabase.auth.signOut();
+      setIsSubmitting(false);
+      toast.error("Your subscription has ended. Please renew your subscription to regain dashboard access.");
+      router.replace("/?renew=1#pricing");
+      return;
+    }
+
     toast.success("Welcome back!");
     router.replace("/dashboard");
   };
@@ -135,6 +153,17 @@ function LoginContent() {
           {/* Sign In View */}
           {!showForgot ? (
             <>
+              {!isLoading && user && !isPremium && (
+                <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-xs text-amber-200/90">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <p>
+                    Your subscription has ended.{" "}
+                    <Link href="/#pricing" className="underline font-medium">Renew your subscription</Link>{" "}
+                    to regain dashboard access, then sign in.
+                  </p>
+                </div>
+              )}
+
               <div className="mb-6">
                 <h1 className="font-display text-3xl">Welcome back</h1>
                 <p className="text-sm text-muted-foreground mt-1">Sign in to your Hano Insiders account.</p>

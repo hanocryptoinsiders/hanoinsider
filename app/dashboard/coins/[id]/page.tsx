@@ -48,14 +48,20 @@ export default async function CoinDetailPage({ params }: { params: Promise<{ id:
   ]);
 
   const related = [...insights, ...articles]
-    .filter((item) =>
-      item.tags?.some(
+    .filter((item) => {
+      const slugMatch =
+        item.related_coin_slug &&
+        (item.related_coin_slug === profile?.id ||
+          item.related_coin_slug === needle ||
+          item.related_coin_slug === symbol.toLowerCase());
+      const tagMatch = item.tags?.some(
         (tag) =>
           tag.toLowerCase() === symbol.toLowerCase() ||
           tag.toLowerCase() === name.toLowerCase() ||
           (profile && profile.tags.includes(tag.toLowerCase())),
-      ),
-    )
+      );
+      return slugMatch || tagMatch;
+    })
     .slice(0, 4);
 
   const stats: { label: string; value: string; accent?: "up" | "down" }[] = [

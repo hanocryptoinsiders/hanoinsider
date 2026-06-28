@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSiteUrl } from "@/lib/site-url";
 import { getStripe, getStripePriceId } from "@/lib/stripe";
 import { PLANS, isPlanId, normalizeEmail, isValidEmail } from "@/lib/payments";
+import { getServiceSupabase } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
 
@@ -67,11 +68,34 @@ export async function POST(request: Request) {
       offer: planConfig.offer ?? "",
     };
 
+    // Existing registered users renew → login. New payers → protected register.
+    const supabase = getServiceSupabase();
+    const { data: paidRecord } = await supabase
+      .from("paid_customers")
+      .select("has_registered, user_id")
+      .eq("email", email)
+      .maybeSingle();
+
+    let hasExistingAccount = Boolean(paidRecord?.has_registered || paidRecord?.user_id);
+    if (!hasExistingAccount) {
+      const { data: profileRow } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      hasExistingAccount = Boolean(profileRow?.id);
+    }
+
+    const successBase = hasExistingAccount ? "/login" : "/register";
+    const successQuery = hasExistingAccount
+      ? `session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}&renewed=1`
+      : `session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`;
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customer.id,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${siteUrl}/register?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
+      success_url: `${siteUrl}${successBase}?${successQuery}`,
       cancel_url: `${siteUrl}/?checkout=cancelled#pricing`,
       allow_promotion_codes: true,
       metadata,

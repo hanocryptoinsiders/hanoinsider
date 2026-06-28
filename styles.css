@@ -3034,6 +3034,12 @@
     position: relative;
     isolation: isolate;
   }
+  html:has(.landing-root) {
+    scroll-behavior: smooth;
+  }
+  #pricing {
+    scroll-margin-top: 5.5rem;
+  }
   .landing-root::before {
     content: "";
     position: fixed;
@@ -3656,4 +3662,93 @@
 
 @supports (text-wrap: pretty) {
   .hero-stand, .arg-text p, .sec-stand { text-wrap: pretty; }
+}
+
+/* Rich HTML article bodies (TipTap output) */
+.rich-content-html h1 {
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  margin-top: 3rem;
+  margin-bottom: 1.25rem;
+  color: var(--foreground);
+  line-height: 1.15;
+}
+.rich-content-html h2 {
+  font-family: var(--font-display);
+  font-size: 1.875rem;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  color: var(--foreground);
+  line-height: 1.2;
+}
+.rich-content-html h3 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  color: var(--foreground);
+}
+.rich-content-html p {
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  color: color-mix(in oklch, var(--foreground) 85%, transparent);
+  margin: 1rem 0;
+}
+.rich-content-html ul,
+.rich-content-html ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+.rich-content-html ul { list-style: disc; }
+.rich-content-html ol { list-style: decimal; }
+.rich-content-html li {
+  margin: 0.35rem 0;
+  line-height: 1.7;
+}
+.rich-content-html blockquote {
+  margin: 1.5rem 0;
+  padding-left: 1.25rem;
+  border-left: 2px solid oklch(0.78 0.14 85);
+  font-style: italic;
+  color: color-mix(in oklch, var(--foreground) 90%, transparent);
+}
+.rich-content-html a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--foreground);
+}
+.rich-content-html a:hover {
+  color: oklch(0.78 0.14 85);
+}
+.rich-content-html img {
+  width: 100%;
+  margin: 2rem 0;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+}
+.rich-content-html pre {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--secondary) 40%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  overflow-x: auto;
+}
+.rich-content-html code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+.rich-content-html hr {
+  margin: 2rem 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .rich-content-html h1 { font-size: 1.875rem; }
+  .rich-content-html h2 { font-size: 1.5rem; }
 }

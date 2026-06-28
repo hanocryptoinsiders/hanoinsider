@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Clock, Heart, MessageCircle, Bookmark, Share2, Lock, Trash2, Send, MessageSquare } from "lucide-react";
+import { ArrowLeft, Clock, Heart, MessageCircle, Bookmark, Share2, Lock, Trash2, Send, MessageSquare, Coins } from "lucide-react";
 import { RichReader } from "@/lib/rich-text";
+import { estimateReadingMinutes } from "@/lib/content-body";
 import type { ContentItem } from "@/lib/content";
+import { findCoinProfile } from "@/lib/coin-profiles";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
@@ -53,8 +55,8 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
       ? "/dashboard/articles"
       : "/dashboard/videos";
 
-  // Use body length for reading time only if body is provided (it won't be for premium-locked free users)
-  const readingTime = item.body ? Math.ceil(item.body.split(/\s+/).length / 200) : 5;
+  const readingTime = item.body ? estimateReadingMinutes(item.body) : 5;
+  const relatedCoin = item.related_coin_slug ? findCoinProfile(item.related_coin_slug) : undefined;
 
   useEffect(() => {
     async function fetchData() {
@@ -288,6 +290,16 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
                 </span>
               ))}
             </div>
+          )}
+
+          {relatedCoin && (
+            <Link
+              href={`/dashboard/coins/${relatedCoin.id}`}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary/20 px-3 py-2 text-xs text-foreground hover:bg-secondary/40 transition w-fit"
+            >
+              <Coins className="h-3.5 w-3.5 text-[oklch(0.78_0.14_85)]" />
+              Related coin: {relatedCoin.name} ({relatedCoin.symbol})
+            </Link>
           )}
         </div>
 

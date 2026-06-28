@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ShieldAlert, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
 import { LogoMark } from "@/components/LogoMark";
+import { getSupportEmail } from "@/lib/support-email";
 
 export default function AccountSuspendedPage() {
   const { signOut, user } = useAuth();
@@ -35,7 +36,7 @@ export default function AccountSuspendedPage() {
 
         <div className="flex flex-col gap-3 pt-4 border-t border-border">
           <a
-            href="mailto:hannah@hanoanimations.com"
+            href={`mailto:${getSupportEmail()}`}
             className="w-full flex items-center justify-center gap-2 rounded-md bg-foreground text-background font-semibold py-2.5 text-sm hover:bg-foreground/90 transition"
           >
             <Mail className="h-4 w-4" /> Contact Support

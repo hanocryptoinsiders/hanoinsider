@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { hasActiveSubscription } from "@/lib/subscription-access";
 
 export async function middleware(request: NextRequest) {
   const isDevDashboardBypass =
@@ -82,11 +83,33 @@ export async function middleware(request: NextRequest) {
       url.pathname = "/login";
       return redirect(url);
     }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, is_premium, subscription_status, subscription_current_period_end")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile && profile.role !== "admin" && !hasActiveSubscription(profile)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.searchParams.set("renew", "1");
+      url.hash = "pricing";
+      return redirect(url);
+    }
   }
 
-  // Redirect logged-in users away from /login and /register
+  // Redirect logged-in users with active subscriptions away from /login and /register
   if ((pathname === "/login" || pathname === "/register") && user) {
-    return redirect(new URL("/dashboard", request.url));
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, is_premium, subscription_status, subscription_current_period_end")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (hasActiveSubscription(profile)) {
+      return redirect(new URL("/dashboard", request.url));
+    }
   }
 
   return supabaseResponse;

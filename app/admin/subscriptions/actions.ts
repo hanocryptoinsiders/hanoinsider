@@ -1,8 +1,142 @@
 "use server";
 
+import { requireAdmin, getCurrentProfile } from "@/lib/auth";
+import { getServiceSupabase } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+
+export type SubscriptionRow = {
+  id: string;
+  user_id: string | null;
+  provider: string;
+  provider_subscription_id: string | null;
+  provider_customer_id: string | null;
+  plan_type: string | null;
+  status: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  created_at: string;
+  user_email: string | null;
+  user_name: string | null;
+  is_premium: boolean;
+  premium_source: string | null;
+  record_source: "subscription" | "paid_customer" | "profile";
+};
+
+export type FetchSubscriptionsResult = {
+  rows: SubscriptionRow[];
+  error?: string;
+};
+
+export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResult> {
+  await requireAdmin();
+  const supabase = getServiceSupabase();
+
+  const rows: SubscriptionRow[] = [];
+  const seenEmails = new Set<string>();
+  const seenSubIds = new Set<string>();
+
+  const { data: subscriptions, error: subsError } = await supabase
+    .from("subscriptions")
+    .select(`
+      id,
+      user_id,
+      provider,
+      provider_subscription_id,
+      provider_customer_id,
+      plan_type,
+      status,
+      current_period_end,
+      cancel_at_period_end,
+      created_at,
+      profiles!user_id (
+        email,
+        full_name,
+        is_premium,
+        premium_source
+      )
+    `)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (subsError) {
+    console.error("[admin/subscriptions] subscriptions fetch error:", subsError.message);
+    return { rows: [], error: subsError.message };
+  }
+
+  for (const s of subscriptions ?? []) {
+    const rawProfile = s.profiles as Record<string, unknown> | Record<string, unknown>[] | null;
+    const profile = Array.isArray(rawProfile) ? rawProfile[0] : rawProfile;
+    const email = (profile?.email as string) ?? null;
+    if (email) seenEmails.add(email.toLowerCase());
+    if (s.provider_subscription_id) seenSubIds.add(s.provider_subscription_id);
+
+    rows.push({
+      id: s.id as string,
+      user_id: s.user_id as string,
+      provider: (s.provider as string) || "stripe",
+      provider_subscription_id: s.provider_subscription_id as string | null,
+      provider_customer_id: s.provider_customer_id as string | null,
+      plan_type: s.plan_type as string | null,
+      status: (s.status as string) || "unknown",
+      current_period_end: s.current_period_end as string | null,
+      cancel_at_period_end: (s.cancel_at_period_end as boolean) || false,
+      created_at: s.created_at as string,
+      user_email: email,
+      user_name: (profile?.full_name as string) ?? null,
+      is_premium: (profile?.is_premium as boolean) ?? false,
+      premium_source: (profile?.premium_source as string) ?? null,
+      record_source: "subscription",
+    });
+  }
+
+  const { data: paidCustomers, error: paidError } = await supabase
+    .from("paid_customers")
+    .select(
+      "id, email, first_name, last_name, selected_plan, stripe_customer_id, stripe_subscription_id, payment_status, subscription_status, subscription_current_period_end, paid_at, created_at, has_registered, user_id",
+    )
+    .order("paid_at", { ascending: false, nullsFirst: false })
+    .limit(200);
+
+  if (paidError) {
+    console.error("[admin/subscriptions] paid_customers fetch error:", paidError.message);
+  } else {
+    for (const p of paidCustomers ?? []) {
+      const emailKey = p.email?.toLowerCase();
+      if (emailKey && seenEmails.has(emailKey)) continue;
+      if (p.stripe_subscription_id && seenSubIds.has(p.stripe_subscription_id)) continue;
+
+      const status =
+        p.payment_status === "paid"
+          ? p.has_registered
+            ? p.subscription_status || "active"
+            : "paid"
+          : p.payment_status || "pending";
+
+      rows.push({
+        id: p.id,
+        user_id: p.user_id,
+        provider: "stripe",
+        provider_subscription_id: p.stripe_subscription_id,
+        provider_customer_id: p.stripe_customer_id,
+        plan_type: p.selected_plan,
+        status,
+        current_period_end: p.subscription_current_period_end,
+        cancel_at_period_end: false,
+        created_at: p.paid_at || p.created_at,
+        user_email: p.email,
+        user_name: [p.first_name, p.last_name].filter(Boolean).join(" ") || null,
+        is_premium: p.payment_status === "paid" && status === "active",
+        premium_source: "stripe",
+        record_source: "paid_customer",
+      });
+      if (emailKey) seenEmails.add(emailKey);
+    }
+  }
+
+  rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return { rows };
+}
 
 /**
  * Admin action: manually grant premium to a user.
@@ -37,13 +171,6 @@ export async function grantPremiumAction(targetUserId: string) {
 
 /**
  * Admin action: grant or renew a crypto-paid membership with a fixed term.
- *
- * Unlike grantPremiumAction (which is a no-expiry comp grant), this sets
- * `subscription_current_period_end`, so the daily cron will send the
- * 7/3/1-day + expiry-day reminders and auto-revoke access when the term ends.
- *
- * Renewing while still active extends from the current period end; renewing an
- * expired/free member starts a fresh term from today. Default term: 30 days.
  */
 export async function grantCryptoMembershipAction(targetUserId: string, termDays = 30) {
   const admin = await getCurrentProfile();
@@ -53,7 +180,6 @@ export async function grantCryptoMembershipAction(targetUserId: string, termDays
 
   const supabase = await createClient();
 
-  // Extend from the later of (now, current period end) so renewals stack.
   const { data: existing } = await supabase
     .from("profiles")
     .select("subscription_current_period_end")
@@ -92,7 +218,6 @@ export async function grantCryptoMembershipAction(targetUserId: string, termDays
 
 /**
  * Admin action: manually revoke premium from a user.
- * Sets premium_source = 'manual' for audit trail.
  */
 export async function revokePremiumAction(targetUserId: string) {
   const admin = await getCurrentProfile();
@@ -106,7 +231,7 @@ export async function revokePremiumAction(targetUserId: string) {
     .update({
       is_premium: false,
       role: "free",
-      subscription_status: "inactive",
+      subscription_status: "expired",
       premium_source: "manual",
     })
     .eq("id", targetUserId);

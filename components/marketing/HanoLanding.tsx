@@ -10,6 +10,7 @@ import { Pricing } from "./Pricing";
 import { BuyModal } from "./BuyModal";
 import { PLANS, type PlanId } from "@/lib/payments";
 import { useLandingMobileReveal } from "./useLandingMobileReveal";
+import { scrollToSection } from "./useSectionScroll";
 
 export function HanoLanding() {
   const searchParams = useSearchParams();
@@ -24,14 +25,26 @@ export function HanoLanding() {
     }
   }, [searchParams]);
 
-  // Smooth-scroll to pricing when redirected back with ?renew=1.
+  // Smooth-scroll to pricing when redirected back with ?renew=1 or hash #pricing.
   useEffect(() => {
-    if (searchParams.get("renew") === "1" || searchParams.get("checkout") === "cancelled") {
-      const timer = setTimeout(() => {
-        document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-      return () => clearTimeout(timer);
+    if (searchParams.get("renew") === "1") {
+      toast.error("Your subscription has ended. Please renew your subscription to regain dashboard access.");
     }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const scrollIfNeeded = () => {
+      if (searchParams.get("renew") === "1" || searchParams.get("checkout") === "cancelled") {
+        scrollToSection("pricing");
+        return;
+      }
+      const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+      if (hash) {
+        scrollToSection(hash);
+      }
+    };
+    const timer = setTimeout(scrollIfNeeded, 100);
+    return () => clearTimeout(timer);
   }, [searchParams]);
 
   return (

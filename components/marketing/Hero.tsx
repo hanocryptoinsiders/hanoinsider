@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
-import { BadgePercent, CircleCheck, CirclePlay, LineChart, type LucideIcon } from "lucide-react";
+import { BadgePercent, CircleCheck, LineChart, type LucideIcon } from "lucide-react";
+import { useSectionScroll } from "./useSectionScroll";
 
 const trustSignals: { label: string; icon: LucideIcon }[] = [
   { label: "Actionable Content", icon: CircleCheck },
@@ -29,6 +32,8 @@ const memberAvatars = [
 const HERO_CHART_SRC = "/assets/hanoinfrontend/heroRight.png";
 
 export function Hero() {
+  const scrollToPricing = useSectionScroll("pricing");
+
   return (
     <section className="hero-section">
       <div className="hero-wide">
@@ -74,15 +79,9 @@ export function Hero() {
         </div>
 
         <div className="cta-row">
-          <a href="#pricing" className="cta-primary cta-gradient">
+          <button type="button" onClick={scrollToPricing} className="cta-primary cta-gradient">
             Start Your Edge <span className="arr">→</span>
-          </a>
-          <a href="#video" className="cta-secondary cta-secondary--learn">
-            Learn More{" "}
-            <span className="cta-play-icon" aria-hidden="true">
-              <CirclePlay size={22} strokeWidth={2.5} />
-            </span>
-          </a>
+          </button>
         </div>
 
         

@@ -5,6 +5,7 @@ import { Check, Copy, Loader2, Mail, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import { useAuth } from "@/lib/auth-context";
+import { getSupportEmail } from "@/lib/support-email";
 
 type Ticket = {
   id: string;
@@ -24,7 +25,7 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
-  const supportEmail = "hannah@hanoanimations.com";
+  const supportEmail = getSupportEmail();
 
   async function loadTickets() {
     try {
@@ -71,7 +72,7 @@ export default function SupportPage() {
 
   return (
     <>
-      <PageHeader kicker="SUPPORT" title="Member support." desc="Create a support ticket, review previous messages, or contact Hannah directly for billing and account help." />
+      <PageHeader kicker="SUPPORT" title="Member support." desc="Create a support ticket, review previous messages, or contact us directly for billing and account help." />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr]">
         <section className="panel p-6">

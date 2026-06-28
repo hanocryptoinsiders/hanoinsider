@@ -48,7 +48,8 @@ async function AdminKPIs() {
   const [
     totalUsers,
     premiumUsers,
-    freeUsers,
+    expiredSubs,
+    pendingPayments,
     activeSubs,
     publishedInsights,
     publishedArticles,
@@ -58,8 +59,20 @@ async function AdminKPIs() {
   ] = await Promise.all([
     runCount(supabase.from("profiles").select("id", { count: "exact", head: true })),
     runCount(supabase.from("profiles").select("id", { count: "exact", head: true }).or("is_premium.eq.true,role.eq.premium,role.eq.admin")),
-    runCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "free")),
-    runCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("subscription_status", "active")),
+    runCount(
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .or("subscription_status.eq.expired,subscription_status.eq.cancelled,subscription_status.eq.inactive")
+        .eq("is_premium", false),
+    ),
+    runCount(
+      supabase
+        .from("paid_customers")
+        .select("id", { count: "exact", head: true })
+        .in("payment_status", ["pending", "incomplete", "unpaid"]),
+    ),
+    runCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("subscription_status", "active").eq("is_premium", true)),
     runCount(supabase.from("content_items").select("id", { count: "exact", head: true }).eq("content_type", "insight").eq("status", "published")),
     runCount(supabase.from("content_items").select("id", { count: "exact", head: true }).eq("content_type", "article").eq("status", "published")),
     runCount(supabase.from("content_items").select("id", { count: "exact", head: true }).eq("content_type", "video").eq("status", "published")),
@@ -69,9 +82,10 @@ async function AdminKPIs() {
 
   const kpis = [
     { label: "Total users", value: totalUsers.toLocaleString(), change: "All registrations", icon: Users, up: true },
-    { label: "Premium users", value: premiumUsers.toLocaleString(), change: "Pro & member access", icon: Eye, up: true },
-    { label: "Free users", value: freeUsers.toLocaleString(), change: "Standard members", icon: Activity, up: true },
-    { label: "Active subscriptions", value: activeSubs.toLocaleString(), change: "Live subscriptions", icon: CreditCard, up: true },
+    { label: "Active subscribers", value: activeSubs.toLocaleString(), change: "Paid members with access", icon: CreditCard, up: true },
+    { label: "Premium users", value: premiumUsers.toLocaleString(), change: "Active paid access", icon: Eye, up: true },
+    { label: "Expired subscribers", value: expiredSubs.toLocaleString(), change: "Lapsed memberships", icon: Activity, up: false },
+    { label: "Pending payments", value: pendingPayments.toLocaleString(), change: "Awaiting confirmation", icon: CreditCard, up: false },
     { label: "Published insights", value: publishedInsights.toLocaleString(), change: "Insights in feed", icon: FileText, up: true },
     { label: "Published articles", value: publishedArticles.toLocaleString(), change: "Educational guides", icon: FileText, up: true },
     { label: "Published videos", value: publishedVideos.toLocaleString(), change: "Uploaded video guides", icon: Video, up: true },

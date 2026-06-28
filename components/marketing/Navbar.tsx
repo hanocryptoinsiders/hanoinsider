@@ -4,18 +4,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { scrollToSection, useSectionScroll } from "./useSectionScroll";
 
 export function Navbar() {
   const { user, isPremium } = useAuth();
   const router = useRouter();
 
+  const scrollToPricing = useSectionScroll("pricing");
+
   const handleEnterDashboard = () => {
     if (isPremium) {
       router.push("/dashboard");
     } else {
-      const el = document.getElementById("pricing");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-      else router.push("/?renew=1#pricing");
+      if (!scrollToSection("pricing")) {
+        router.push("/?renew=1#pricing");
+      }
     }
   };
 
@@ -43,9 +46,9 @@ export function Navbar() {
               <Link href="/login" className="topbar-action mx-2 topbar-action--plain">
                 Log In
               </Link>
-              <a href="#pricing" className="topbar-cta-btn">
+              <button type="button" onClick={scrollToPricing} className="topbar-cta-btn">
                 Get Started
-              </a>
+              </button>
             </>
           )}
         </div>

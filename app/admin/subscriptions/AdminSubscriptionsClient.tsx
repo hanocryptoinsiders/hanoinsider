@@ -2,31 +2,34 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import type { SubscriptionRow } from "./page";
+import type { SubscriptionRow } from "./actions";
 import { grantPremiumAction, revokePremiumAction, grantCryptoMembershipAction } from "./actions";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "text-success",
+  paid: "text-success",
   authenticated: "text-[oklch(0.78_0.14_85)]",
   created: "text-muted-foreground",
   pending: "text-[oklch(0.78_0.14_85)]",
   incomplete: "text-muted-foreground",
   incomplete_expired: "text-destructive",
   cancelled: "text-destructive",
+  canceled: "text-destructive",
   completed: "text-muted-foreground",
   expired: "text-destructive",
   past_due: "text-[oklch(0.78_0.14_85)]",
   paused: "text-muted-foreground",
+  inactive: "text-destructive",
 };
 
 const filters = [
   "All",
   "Active",
+  "Paid",
+  "Pending",
   "Past Due",
   "Cancelled",
-  "Completed",
-  "Premium",
-  "Free",
+  "Expired",
   "Monthly",
   "Quarterly",
   "Yearly",
@@ -52,11 +55,11 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
     if (filter === "Monthly") return r.plan_type === "monthly";
     if (filter === "Quarterly") return r.plan_type === "quarterly";
     if (filter === "Yearly") return r.plan_type === "yearly";
-    if (filter === "Premium") return r.is_premium;
-    if (filter === "Free") return !r.is_premium;
     if (filter === "Manual") return r.premium_source === "manual";
     if (filter === "Past Due") return r.status === "past_due";
     if (filter === "Stripe") return r.provider === "stripe";
+    if (filter === "Paid") return r.status === "paid";
+    if (filter === "Pending") return r.status === "pending" || r.status === "incomplete";
     return r.status.toLowerCase() === filter.toLowerCase();
   });
 
@@ -95,7 +98,6 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
 
   return (
     <>
-      {/* Filter pills */}
       <div className="flex flex-wrap gap-2">
         {filters.map((f) => (
           <button
@@ -110,7 +112,6 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
         ))}
       </div>
 
-      {/* Table */}
       <section className="panel p-6 overflow-x-auto">
         <p className="text-[11px] tracking-[0.2em] text-muted-foreground">
           SUBSCRIPTIONS
@@ -119,7 +120,7 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
 
         {filtered.length === 0 ? (
           <div className="mt-8 text-center text-sm text-muted-foreground py-12">
-            No subscriptions found
+            No subscription records found
             {filter !== "All" && (
               <button
                 onClick={() => setFilter("All")}
@@ -130,15 +131,16 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
             )}
           </div>
         ) : (
-          <table className="w-full text-sm mt-4 min-w-[900px]">
+          <table className="w-full text-sm mt-4 min-w-[980px]">
             <thead>
               <tr className="text-left text-[10px] tracking-wider text-muted-foreground border-b border-border">
                 <th className="pb-3">USER</th>
                 <th className="pb-3">PROVIDER</th>
                 <th className="pb-3">PLAN</th>
                 <th className="pb-3">STATUS</th>
-                <th className="pb-3">PREMIUM</th>
+                <th className="pb-3">ACCESS</th>
                 <th className="pb-3">SOURCE</th>
+                <th className="pb-3">STRIPE SUB</th>
                 <th className="pb-3">PERIOD END</th>
                 <th className="pb-3">STARTED</th>
                 <th className="pb-3">ACTIONS</th>
@@ -146,7 +148,7 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
+                <tr key={`${s.record_source}-${s.id}`} className="border-b border-border last:border-0 hover:bg-secondary/10 transition-colors">
                   <td className="py-3">
                     <p className="font-mono text-xs">{s.user_email ?? "—"}</p>
                     {s.user_name && (
@@ -165,45 +167,52 @@ export default function AdminSubscriptionsClient({ rows }: { rows: SubscriptionR
                   </td>
                   <td className="py-3">
                     <span className={`text-xs font-medium ${s.is_premium ? "text-success" : "text-muted-foreground"}`}>
-                      {s.is_premium ? "Premium" : "Free"}
+                      {s.is_premium ? "Active" : "Expired / pending"}
                     </span>
                   </td>
                   <td className="py-3 text-xs text-muted-foreground capitalize">
-                    {s.premium_source || "—"}
+                    {s.premium_source || s.record_source.replace("_", " ")}
+                  </td>
+                  <td className="py-3 font-mono text-[10px] text-muted-foreground max-w-[120px] truncate" title={s.provider_subscription_id ?? undefined}>
+                    {s.provider_subscription_id ? s.provider_subscription_id.slice(0, 14) + "…" : "—"}
                   </td>
                   <td className="py-3 text-muted-foreground text-xs">
                     {s.cancel_at_period_end ? `Ends ${formatDate(s.current_period_end)}` : formatDate(s.current_period_end)}
                   </td>
                   <td className="py-3 text-muted-foreground text-xs">{formatDate(s.created_at)}</td>
                   <td className="py-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        onClick={() => handleGrantCrypto(s.user_id)}
-                        disabled={loadingAction === s.user_id + "-crypto"}
-                        className="rounded px-2 py-1 text-[10px] font-medium bg-[oklch(0.78_0.14_85)]/10 text-[oklch(0.78_0.14_85)] hover:bg-[oklch(0.78_0.14_85)]/20 transition disabled:opacity-50"
-                        title="Set/renew a crypto membership with a 30-day expiry (triggers reminders + auto-revoke)"
-                      >
-                        {s.is_premium ? "Renew 30d" : "Crypto 30d"}
-                      </button>
-                      {!s.is_premium ? (
+                    {s.user_id ? (
+                      <div className="flex flex-wrap gap-1.5">
                         <button
-                          onClick={() => handleGrantPremium(s.user_id)}
-                          disabled={loadingAction === s.user_id + "-grant"}
-                          className="rounded px-2 py-1 text-[10px] font-medium bg-success/10 text-success hover:bg-success/20 transition disabled:opacity-50"
-                          title="Comp access with no expiry (never auto-revoked)"
+                          onClick={() => handleGrantCrypto(s.user_id!)}
+                          disabled={loadingAction === s.user_id + "-crypto"}
+                          className="rounded px-2 py-1 text-[10px] font-medium bg-[oklch(0.78_0.14_85)]/10 text-[oklch(0.78_0.14_85)] hover:bg-[oklch(0.78_0.14_85)]/20 transition disabled:opacity-50"
+                          title="Set/renew a crypto membership with a 30-day expiry"
                         >
-                          Grant (no expiry)
+                          {s.is_premium ? "Renew 30d" : "Crypto 30d"}
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => handleRevokePremium(s.user_id)}
-                          disabled={loadingAction === s.user_id + "-revoke"}
-                          className="rounded px-2 py-1 text-[10px] font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition disabled:opacity-50"
-                        >
-                          Revoke
-                        </button>
-                      )}
-                    </div>
+                        {!s.is_premium ? (
+                          <button
+                            onClick={() => handleGrantPremium(s.user_id!)}
+                            disabled={loadingAction === s.user_id + "-grant"}
+                            className="rounded px-2 py-1 text-[10px] font-medium bg-success/10 text-success hover:bg-success/20 transition disabled:opacity-50"
+                            title="Comp access with no expiry"
+                          >
+                            Grant (no expiry)
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleRevokePremium(s.user_id!)}
+                            disabled={loadingAction === s.user_id + "-revoke"}
+                            className="rounded px-2 py-1 text-[10px] font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 transition disabled:opacity-50"
+                          >
+                            Revoke
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">Awaiting registration</span>
+                    )}
                   </td>
                 </tr>
               ))}

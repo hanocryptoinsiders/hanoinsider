@@ -28,7 +28,7 @@ export default async function InsightDetailPage({ params }: PageProps) {
   if (!isAdmin && item.status !== "published") notFound();
 
   // Determine locked state server-side — NOT client-side
-  // For free users visiting premium content: body/video_url is already NULL from the DB view.
+  // Premium-gated content: body/video_url is NULL from the DB view when locked.
   // The `locked` flag tells the UI to show the upgrade CTA instead of empty content.
   const locked = item.is_premium && !isPremiumOrAdmin;
 

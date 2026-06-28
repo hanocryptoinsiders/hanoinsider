@@ -1,6 +1,7 @@
 "use server";
 
 import { getMockMarketSnapshot } from "@/lib/coin-profiles";
+import { coinProfiles, coinSlugForLink } from "@/lib/coin-profiles";
 import { getCoinHistoryPrices, getCoinHistorySeriesPoints, type CoinHistoryPoint } from "@/lib/market-history";
 
 const CMC_BASE = "https://pro-api.coinmarketcap.com";
@@ -125,4 +126,28 @@ export async function getCoinHistorySeries(
   timeframe: string,
 ): Promise<CoinHistoryPoint[]> {
   return getCoinHistorySeriesPoints(symbol, timeframe);
+}
+
+export type CoinPickerOption = { slug: string; name: string; symbol: string };
+
+/** Options for admin content coin selector (live market + curated profiles). */
+export async function getCoinPickerOptions(): Promise<CoinPickerOption[]> {
+  const snap = await getMarketSnapshot();
+  const seen = new Set<string>();
+  const options: CoinPickerOption[] = [];
+
+  for (const coin of snap.top) {
+    const slug = coinSlugForLink(coin.symbol, coin.name);
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    options.push({ slug, name: coin.name, symbol: coin.symbol });
+  }
+
+  for (const profile of coinProfiles) {
+    if (seen.has(profile.id)) continue;
+    seen.add(profile.id);
+    options.push({ slug: profile.id, name: profile.name, symbol: profile.symbol });
+  }
+
+  return options.sort((a, b) => a.name.localeCompare(b.name));
 }

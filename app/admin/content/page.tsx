@@ -7,16 +7,6 @@ import {
   Trash2,
   Eye,
   Image as ImageIcon,
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Link as LinkIcon,
-  Heading1,
-  Heading2,
-  Quote,
-  Highlighter,
-  Minus,
   X,
   Save,
   Video,
@@ -29,9 +19,15 @@ import {
   Globe,
   Lock,
   Copy,
+  Upload,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import { RichReader } from "@/lib/rich-text";
+import { ContentRichEditor } from "@/components/admin/ContentRichEditor";
+import { countBodyWords } from "@/lib/content-body";
 import {
   getContentItems,
   createContentItem,
@@ -43,11 +39,14 @@ import {
   togglePublicContent,
   type ContentItem,
 } from "@/lib/content";
+import { uploadContentThumbnail } from "@/lib/content-upload";
+import { getCoinPickerOptions, type CoinPickerOption } from "@/lib/market.functions";
+import { getPublicShareUrl } from "@/lib/site-url";
 import { toast } from "sonner";
 
 const categories = ["Macro", "Bitcoin", "Ethereum", "Altcoins", "On-chain", "Education", "Trading"];
 
-type FilterKey = "All" | "insight" | "article" | "video" | "draft" | "published" | "archived" | "free" | "premium";
+type FilterKey = "All" | "insight" | "article" | "video" | "draft" | "published" | "archived" | "standard" | "premium";
 
 type FormState = {
   type: "insight" | "article" | "video";
@@ -58,9 +57,10 @@ type FormState = {
   tags: string;
   thumbnail: string;
   body: string;
-  visibility: "Premium" | "Free";
+  visibility: "Premium" | "Standard";
   allowComments: boolean;
   video_url: string;
+  related_coin_slug: string;
   status: "draft" | "published" | "archived";
 };
 
@@ -72,10 +72,11 @@ const emptyForm: FormState = {
   excerpt: "",
   tags: "",
   thumbnail: "",
-  body: "## Section heading\n\nWrite your **insight** here. Drop a [link](https://example.com) or add images:\n\n> A clean context beats a loud one.\n\n- Point one\n- Point two",
+  body: "",
   visibility: "Premium",
   allowComments: true,
   video_url: "",
+  related_coin_slug: "",
   status: "draft",
 };
 
@@ -88,7 +89,11 @@ export default function AdminContent() {
   const [preview, setPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [uploadState, setUploadState] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [coinOptions, setCoinOptions] = useState<CoinPickerOption[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const editorInstanceKey = editingId ?? "new";
 
   // ������ Data Loading ��������������������������������������������������������������������������������������������������������������������
 
@@ -106,6 +111,9 @@ export default function AdminContent() {
 
   useEffect(() => {
     loadItems();
+    getCoinPickerOptions()
+      .then(setCoinOptions)
+      .catch(() => setCoinOptions([]));
   }, []);
 
   // ������ Slug Generator ����������������������������������������������������������������������������������������������������������������
@@ -126,78 +134,25 @@ export default function AdminContent() {
     }));
   };
 
-  // ������ Markdown Toolbar Helpers ��������������������������������������������������������������������������������������������
+  // ─── Form Actions ───────────────────────────────────────────────────────────
 
-  const wrap = (before: string, after = before, placeholder = "text") => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart,
-      end = el.selectionEnd;
-    const sel = draft.body.slice(start, end) || placeholder;
-    const next = draft.body.slice(0, start) + before + sel + after + draft.body.slice(end);
-    setDraft({ ...draft, body: next });
-    requestAnimationFrame(() => {
-      el.focus();
-      el.selectionStart = start + before.length;
-      el.selectionEnd = start + before.length + sel.length;
-    });
+  const handleThumbnailUpload = async (file: File) => {
+    setUploadState("uploading");
+    setUploadError(null);
+    const formData = new FormData();
+    formData.append("file", file);
+    const result = await uploadContentThumbnail(formData);
+    if (!result.success) {
+      setUploadState("error");
+      setUploadError(result.error);
+      toast.error(result.error);
+      return;
+    }
+    setDraft((prev) => ({ ...prev, thumbnail: result.url }));
+    setUploadState("success");
+    toast.success("Image uploaded");
+    setTimeout(() => setUploadState("idle"), 2000);
   };
-
-  const linePrefix = (prefix: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const body = draft.body;
-    const lineStart = body.lastIndexOf("\n", start - 1) + 1;
-    const next = body.slice(0, lineStart) + prefix + body.slice(lineStart);
-    setDraft({ ...draft, body: next });
-    requestAnimationFrame(() => {
-      el.focus();
-      el.selectionStart = el.selectionEnd = start + prefix.length;
-    });
-  };
-
-  const insertBlock = (block: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const next =
-      draft.body.slice(0, start) +
-      (draft.body[start - 1] === "\n" || start === 0 ? "" : "\n\n") +
-      block +
-      "\n\n" +
-      draft.body.slice(start);
-    setDraft({ ...draft, body: next });
-  };
-
-  const addImage = () => {
-    const url = window.prompt("Image URL");
-    if (!url) return;
-    const alt = window.prompt("Alt / caption (optional)") || "";
-    insertBlock(`![${alt}](${url})`);
-  };
-
-  const addLink = () => {
-    const url = window.prompt("Link URL", "https://");
-    if (!url) return;
-    wrap("[", `](${url})`, "link text");
-  };
-
-  const tools = [
-    { Icon: Heading1, label: "H1", fn: () => linePrefix("# ") },
-    { Icon: Heading2, label: "H2", fn: () => linePrefix("## ") },
-    { Icon: Bold, label: "Bold", fn: () => wrap("**") },
-    { Icon: Italic, label: "Italic", fn: () => wrap("*") },
-    { Icon: Highlighter, label: "Highlight", fn: () => wrap("==") },
-    { Icon: Quote, label: "Quote", fn: () => linePrefix("> ") },
-    { Icon: List, label: "Bullet list", fn: () => linePrefix("- ") },
-    { Icon: ListOrdered, label: "Numbered list", fn: () => linePrefix("1. ") },
-    { Icon: LinkIcon, label: "Link", fn: addLink },
-    { Icon: ImageIcon, label: "Image", fn: addImage },
-    { Icon: Minus, label: "Divider", fn: () => insertBlock("---") },
-  ];
-
-  // ������ Form Actions ��������������������������������������������������������������������������������������������������������������������
 
   const handleSave = (targetStatus: "draft" | "published" | "archived") => {
     if (!draft.title.trim()) {
@@ -226,6 +181,7 @@ export default function AdminContent() {
                 .filter(Boolean)
             : [],
           is_premium: draft.visibility === "Premium",
+          related_coin_slug: draft.related_coin_slug.trim() || null,
           status: targetStatus,
           video_url: draft.type === "video" ? draft.video_url || null : null,
           published_at: targetStatus === "published" ? new Date().toISOString() : null,
@@ -261,9 +217,10 @@ export default function AdminContent() {
       tags: (item.tags || []).join(", "),
       thumbnail: item.thumbnail_url || "",
       body: item.body || "",
-      visibility: item.is_premium ? "Premium" : "Free",
+      visibility: item.is_premium ? "Premium" : "Standard",
       allowComments: true,
       video_url: item.video_url || "",
+      related_coin_slug: item.related_coin_slug || "",
       status: item.status,
     });
     setOpen(true);
@@ -306,23 +263,22 @@ export default function AdminContent() {
   const handleTogglePremium = async (id: string, currentlyPremium: boolean, type: string) => {
     try {
       await togglePremiumContent(id, currentlyPremium, type);
-      toast.success(currentlyPremium ? "Set to Free" : "Set to Premium");
+      toast.success(currentlyPremium ? "Set to Standard" : "Set to Premium");
       loadItems();
     } catch (err: any) {
       toast.error(err.message || "Failed to toggle visibility");
     }
   };
 
-  const publicLinkFor = (slug: string) =>
-    `${typeof window !== "undefined" ? window.location.origin : ""}/share/${slug}`;
+  const publicLinkFor = (slug: string) => getPublicShareUrl(slug);
 
-  const handleTogglePublic = async (id: string, currentlyPublic: boolean, type: string, slug: string) => {
+  const handleTogglePublic = async (id: string, currentlyPublic: boolean, type: string) => {
     try {
       const result = await togglePublicContent(id, !currentlyPublic, type);
       if (result.is_public) {
         try {
           await navigator.clipboard.writeText(publicLinkFor(result.slug));
-          toast.success("Made public · link copied to clipboard");
+          toast.success("Public link copied.");
         } catch {
           toast.success("Made public · share link ready");
         }
@@ -335,10 +291,18 @@ export default function AdminContent() {
     }
   };
 
-  const handleCopyPublicLink = async (slug: string) => {
+  const handleCopyPublicLink = async (item: ContentItem) => {
+    if (!item.is_public) {
+      toast.error("Make this content public before copying a share link.");
+      return;
+    }
+    if (!item.slug?.trim()) {
+      toast.error("This item has no slug yet.");
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(publicLinkFor(slug));
-      toast.success("Public link copied to clipboard");
+      await navigator.clipboard.writeText(publicLinkFor(item.slug));
+      toast.success("Public link copied.");
     } catch {
       toast.error("Could not copy link");
     }
@@ -358,7 +322,7 @@ export default function AdminContent() {
 
   const filtered = content.filter((c) => {
     if (filter === "All") return true;
-    if (filter === "free") return !c.is_premium;
+    if (filter === "standard") return !c.is_premium;
     if (filter === "premium") return c.is_premium;
     if (filter === "insight" || filter === "article" || filter === "video") {
       return c.content_type === filter;
@@ -376,7 +340,7 @@ export default function AdminContent() {
     draft: "Drafts",
     published: "Published",
     archived: "Archived",
-    free: "Free",
+    standard: "Standard",
     premium: "Premium",
   };
 
@@ -457,7 +421,7 @@ export default function AdminContent() {
                 {isPending ? (
                   <span className="animate-spin inline-block h-3 w-3 border border-current border-t-transparent rounded-full" />
                 ) : null}
-                Publish Now
+                {editingId ? "Update & Publish" : "Publish Now"}
               </button>
             </div>
           </div>
@@ -511,41 +475,22 @@ export default function AdminContent() {
                     />
                   </div>
 
-                  {/* Markdown Toolbar */}
-                  <div className="rounded-lg border border-border bg-background/40 backdrop-blur sticky top-0 z-10">
-                    <div className="flex flex-wrap items-center gap-0.5 p-2">
-                      {tools.map(({ Icon, label, fn }) => (
-                        <button
-                          key={label}
-                          type="button"
-                          title={label}
-                          onClick={fn}
-                          className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition"
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                        </button>
-                      ))}
-                      <span className="ml-2 hidden md:inline text-[10px] text-muted-foreground/60">
-                        Markdown � **bold** *italic* ==highlight==
-                      </span>
-                    </div>
-                  </div>
-
+                  {/* Rich text body */}
                   <div>
                     <label className="text-[10px] tracking-wider text-muted-foreground font-mono block mb-2">
-                      BODY CONTENT (MARKDOWN)
+                      ARTICLE BODY
                     </label>
-                    <textarea
-                      ref={textareaRef}
+                    <ContentRichEditor
+                      key={editorInstanceKey}
                       value={draft.body}
-                      onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-                      rows={22}
-                      spellCheck
-                      className="w-full rounded-lg border border-border bg-background/40 px-4 py-3 text-sm font-mono leading-relaxed focus:outline-none focus:border-foreground/30 focus:ring-1 focus:ring-foreground/10 resize-y"
+                      onChange={(html) => setDraft({ ...draft, body: html })}
+                      disabled={isPending}
+                      placeholder="Write your insight, article, or guide. Use the toolbar to format text, add links, and insert images."
                     />
-                    <p className="mt-1 text-[10px] text-muted-foreground/50 font-mono">
-                      {draft.body.split(/\s+/).filter(Boolean).length} words �{" "}
-                      {Math.ceil(draft.body.split(/\s+/).filter(Boolean).length / 200)} min read
+                    <p className="mt-2 text-[10px] text-muted-foreground/50 font-mono">
+                      {countBodyWords(draft.body)} words ·{" "}
+                      {Math.max(1, Math.ceil(countBodyWords(draft.body) / 200))} min read · Legacy markdown
+                      content is converted in the editor and saved as rich HTML on update.
                     </p>
                   </div>
                 </>
@@ -653,7 +598,10 @@ export default function AdminContent() {
               {/* Thumbnail */}
               <div>
                 <p className="text-[10px] tracking-wider text-muted-foreground font-mono">
-                  THUMBNAIL IMAGE URL
+                  COVER IMAGE
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground leading-relaxed">
+                  Cover image for cards and article headers — separate from inline images in the body editor.
                 </p>
                 {draft.thumbnail ? (
                   <div className="relative mt-2 rounded-md overflow-hidden border border-border">
@@ -666,24 +614,98 @@ export default function AdminContent() {
                     />
                     <button
                       type="button"
-                      onClick={() => setDraft({ ...draft, thumbnail: "" })}
+                      onClick={() => {
+                        setDraft({ ...draft, thumbnail: "" });
+                        setUploadState("idle");
+                        setUploadError(null);
+                      }}
                       className="absolute top-2 right-2 rounded-full bg-background/85 p-1 text-foreground hover:bg-background shadow"
                     >
                       <X className="h-3 w-3" />
                     </button>
+                    {uploadState === "success" && (
+                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded bg-emerald-500/90 px-2 py-0.5 text-[10px] text-white">
+                        <CheckCircle2 className="h-3 w-3" /> Uploaded
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-2 flex flex-col items-center justify-center rounded-md border border-dashed border-border px-3 py-6 text-xs text-muted-foreground bg-background/10">
-                    <ImageIcon className="h-5 w-5 mb-1.5 text-muted-foreground/60" />
-                    <span>Provide image URL below</span>
+                    {uploadState === "uploading" ? (
+                      <Loader2 className="h-5 w-5 mb-1.5 animate-spin text-muted-foreground" />
+                    ) : uploadState === "error" ? (
+                      <AlertCircle className="h-5 w-5 mb-1.5 text-red-400" />
+                    ) : (
+                      <ImageIcon className="h-5 w-5 mb-1.5 text-muted-foreground/60" />
+                    )}
+                    <span>
+                      {uploadState === "uploading"
+                        ? "Uploading…"
+                        : uploadState === "error"
+                        ? uploadError || "Upload failed"
+                        : "Upload an image or paste a URL below"}
+                    </span>
                   </div>
                 )}
                 <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleThumbnailUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={uploadState === "uploading"}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
+                  >
+                    {uploadState === "uploading" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    Upload file
+                  </button>
+                </div>
+                <input
                   value={draft.thumbnail}
-                  onChange={(e) => setDraft({ ...draft, thumbnail: e.target.value })}
-                  placeholder="Paste thumbnail URL"
+                  onChange={(e) => {
+                    setDraft({ ...draft, thumbnail: e.target.value });
+                    setUploadState("idle");
+                    setUploadError(null);
+                  }}
+                  placeholder="Or paste image URL"
                   className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none"
                 />
+                <p className="mt-1 text-[10px] text-muted-foreground">JPG, PNG, or WebP · max 5 MB</p>
+              </div>
+
+              {/* Related coin (optional) */}
+              <div>
+                <p className="text-[10px] tracking-wider text-muted-foreground font-mono">
+                  RELATED COIN (OPTIONAL)
+                </p>
+                <select
+                  value={draft.related_coin_slug}
+                  onChange={(e) => setDraft({ ...draft, related_coin_slug: e.target.value })}
+                  className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none"
+                >
+                  <option value="">None — not linked to a coin</option>
+                  {coinOptions.map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.name} ({c.symbol})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-muted-foreground leading-relaxed">
+                  Links this content to a coin detail page and related-content sections.
+                </p>
               </div>
 
               {/* Video URL  only for video type */}
@@ -742,7 +764,7 @@ export default function AdminContent() {
                   VISIBILITY TIER
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-1 panel p-1 text-xs">
-                  {(["Premium", "Free"] as const).map((v) => (
+                  {(["Premium", "Standard"] as const).map((v) => (
                     <button
                       key={v}
                       type="button"
@@ -758,9 +780,9 @@ export default function AdminContent() {
                   ))}
                 </div>
                 <p className="mt-2 text-[10px] text-muted-foreground leading-relaxed">
-                  {draft.visibility === "Free"
-                    ? "Open: visible to all registered users."
-                    : "Premium: body & video masked for non-subscribers at the database level."}
+                  {draft.visibility === "Standard"
+                    ? "Standard: included for all paid members."
+                    : "Premium: extra-gated content for premium members."}
                 </p>
               </div>
             </aside>
@@ -875,7 +897,7 @@ export default function AdminContent() {
                             : "bg-secondary text-muted-foreground border border-border"
                         }`}
                       >
-                        {c.is_premium ? "PREMIUM" : "FREE"}
+                        {c.is_premium ? "PREMIUM" : "STANDARD"}
                       </span>
                     </td>
 
@@ -917,7 +939,7 @@ export default function AdminContent() {
                         {/* Toggle Premium / Free */}
                         <button
                           onClick={() => handleTogglePremium(c.id, c.is_premium, c.content_type)}
-                          title={c.is_premium ? "Set as Free" : "Set as Premium"}
+                          title={c.is_premium ? "Set as Standard" : "Set as Premium"}
                           className={`rounded p-1.5 hover:bg-accent transition ${
                             c.is_premium
                               ? "text-[oklch(0.78_0.14_85)]"
@@ -933,7 +955,7 @@ export default function AdminContent() {
 
                         {/* Toggle Public / Private share */}
                         <button
-                          onClick={() => handleTogglePublic(c.id, !!c.is_public, c.content_type, c.slug)}
+                          onClick={() => handleTogglePublic(c.id, !!c.is_public, c.content_type)}
                           title={c.is_public ? "Make Private" : "Make Public (shareable)"}
                           className={`rounded p-1.5 hover:bg-accent transition ${
                             c.is_public
@@ -949,15 +971,15 @@ export default function AdminContent() {
                         </button>
 
                         {/* Copy public link (only when public) */}
-                        {c.is_public && (
-                          <button
-                            onClick={() => handleCopyPublicLink(c.slug)}
-                            title="Copy public link"
-                            className="rounded p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground transition"
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleCopyPublicLink(c)}
+                          title={c.is_public ? "Copy public link" : "Make public to copy a share link"}
+                          className={`rounded p-1.5 hover:bg-accent transition ${
+                            c.is_public ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground/50"
+                          }`}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
 
                         {/* View live page (published only) */}
                         {c.status === "published" && (
