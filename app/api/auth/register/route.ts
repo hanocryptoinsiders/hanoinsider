@@ -36,7 +36,9 @@ export async function POST(request: Request) {
     // 1. Verify the email has a confirmed paid record.
     const { data: paid, error: paidError } = await supabase
       .from("paid_customers")
-      .select("id, first_name, last_name, selected_plan, stripe_customer_id, stripe_subscription_id, subscription_status, subscription_current_period_end, payment_status, has_registered, user_id")
+      .select(
+        "id, first_name, last_name, selected_plan, stripe_customer_id, payment_status, has_registered, user_id",
+      )
       .eq("email", email)
       .maybeSingle();
 
@@ -121,17 +123,23 @@ export async function POST(request: Request) {
       .update({ has_registered: true, user_id: userId })
       .eq("id", paid.id);
 
-    // 6. Link any Stripe subscription snapshot captured by the webhook pre-registration.
-    if (paid.stripe_subscription_id) {
+    // 6. Link Stripe subscription snapshot if migration 012 columns exist (optional).
+    const { data: paidExtras, error: extrasError } = await supabase
+      .from("paid_customers")
+      .select("stripe_subscription_id, subscription_status, subscription_current_period_end")
+      .eq("id", paid.id)
+      .maybeSingle();
+
+    if (!extrasError && paidExtras?.stripe_subscription_id) {
       await supabase.from("subscriptions").upsert(
         {
           user_id: userId,
           provider: "stripe",
           provider_customer_id: paid.stripe_customer_id,
-          provider_subscription_id: paid.stripe_subscription_id,
-          plan_type: paid.selected_plan,
-          status: paid.subscription_status || "active",
-          current_period_end: paid.subscription_current_period_end,
+          provider_subscription_id: paidExtras.stripe_subscription_id,
+          plan_type: paid.selected_plan === "early_bird" ? "early_bird" : "monthly",
+          status: paidExtras.subscription_status || "active",
+          current_period_end: paidExtras.subscription_current_period_end,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "provider_subscription_id" },
