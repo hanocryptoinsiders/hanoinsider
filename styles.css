@@ -464,41 +464,50 @@
 
   .hero-section {
     position: relative;
-    padding: 5rem 0 6rem;
+    padding: 5rem 32px 6rem;
     border-bottom: 1px solid var(--border);
     overflow: hidden;
+    isolation: isolate;
+    margin-left: -32px;
+    margin-right: -32px;
   }
-  @media (max-width: 640px) { .hero-section { padding: 3.75rem 0 4rem; } }
-  .hero-chart {
+  @media (max-width: 640px) {
+    .hero-section {
+      padding: 3.75rem 20px 4rem;
+      margin-left: -20px;
+      margin-right: -20px;
+    }
+  }
+  .hero-bg-video {
     position: absolute;
-    right: clamp(-48px, -5vw, -12px);
-    top: 50%;
-    transform: translateY(-50%);
+    inset: 0;
     z-index: 0;
-    width: auto;
-    max-width: clamp(300px, 54vw, 720px);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 0;
+    overflow: hidden;
     pointer-events: none;
     user-select: none;
   }
-  .hero-chart-mobile {
-    display: none;
-  }
-  .hero-chart-img {
-    display: block;
-    width: auto;
+  .hero-bg-video-el {
+    width: min(1040px, 88vw);
+    aspect-ratio: 1920 / 1080;
     height: auto;
-    max-width: 100%;
-    max-height: min(460px, 68vh);
+    margin-right: clamp(-100px, -10vw, -40px);
+    transform: translateX(4%);
     object-fit: contain;
-    object-position: right center;
+    object-position: center;
+    filter: blur(10px) saturate(1.35) brightness(1.15);
+    mix-blend-mode: screen;
+    opacity: 0.95;
+    flex-shrink: 0;
   }
-  @media (min-width: 768px) {
-    .hero-chart {
-      max-width: clamp(240px, 40vw, 520px);
-    }
-    .hero-chart .hero-chart-img {
-      max-height: min(340px, 52vh);
-    }
+  .hero-bg-video-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.55);
   }
   .hero-section .eyebrow { margin-bottom: 32px; }
   .hero-wide {
@@ -1795,6 +1804,19 @@
   }
   .plan-card-badge-float .plan-badge--pill {
     box-shadow: 0 4px 20px rgba(139, 111, 212, .5);
+  }
+  .plan-badge--sold-out {
+    background: rgba(255, 255, 255, .08);
+    color: var(--fg-3);
+    box-shadow: none;
+  }
+  .plan-card--sold-out {
+    opacity: .84;
+  }
+  .plan-card--sold-out .plan-cta:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+    filter: grayscale(.35);
   }
 
   /*  MARKETING: PRICING V2  */
@@ -3146,6 +3168,10 @@
     padding: calc(4rem + env(safe-area-inset-top)) 0 3.25rem;
     border-bottom: 0;
     position: relative;
+    margin-left: -20px;
+    margin-right: -20px;
+    padding-left: 20px;
+    padding-right: 20px;
   }
   .landing-root .hero-section::after {
     content: "";
@@ -3160,24 +3186,15 @@
     max-width: 680px;
     margin-left: 0;
   }
-  .landing-root .hero-chart {
-    display: none;
+  .landing-root .hero-bg-video-el {
+    width: min(780px, 88vw);
+    margin-right: clamp(-56px, -8vw, -12px);
+    transform: translateX(5%);
+    aspect-ratio: 1920 / 1080;
+    filter: blur(8px) saturate(1.4) brightness(1.2);
   }
-  .landing-root .hero-chart-mobile {
-    display: block;
-    position: relative;
-    width: 100%;
-    max-width: 100%;
-    margin: 0 0 20px;
-    opacity: 1;
-  }
-  .landing-root .hero-chart-mobile .hero-chart-img {
-    max-height: min(300px, 62vw);
-    width: 100%;
-    object-fit: contain;
-    object-position: center;
-    mask-image: none;
-    -webkit-mask-image: none;
+  .landing-root .hero-bg-video-overlay {
+    background: rgba(0, 0, 0, 0.6);
   }
   .landing-root .hero-section .eyebrow {
     margin-bottom: 24px;

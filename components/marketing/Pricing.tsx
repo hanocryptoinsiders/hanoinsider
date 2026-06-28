@@ -3,6 +3,13 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { PaymentMethodsTicker } from "./PaymentMethodsTicker";
+import { useEarlyBirdAvailability } from "./useEarlyBirdAvailability";
+import {
+  EARLY_BIRD_LIMIT,
+  EARLY_BIRD_MONTHLY_PRICE,
+  REGULAR_MONTHLY_PRICE,
+  formatEarlyBirdSpotLabel,
+} from "@/lib/early-bird";
 import type { PlanId } from "@/lib/payments";
 
 const features = [
@@ -46,20 +53,36 @@ export function Pricing({
   onBuy: (planId: PlanId) => void;
 }) {
   const countdown = useCountdown();
+  const availability = useEarlyBirdAvailability();
+  const soldOut = availability?.soldOut ?? false;
+  const spotLabel = availability
+    ? formatEarlyBirdSpotLabel(availability)
+    : `${EARLY_BIRD_LIMIT} founding spots`;
 
   return (
     <section id="pricing" className="landing-section">
       <div className="pricing-header" data-m-reveal>
         <div className="eyebrow">
           <span className="pulse-dot" />
-          <span className="acc">Early bird offer</span>
+          <span className="acc">
+            {soldOut ? "Founding rate closed" : "Early bird offer"}
+          </span>
         </div>
         <h2 className="pricing-title">
-          Early Bird Lifetime Access
+          {soldOut ? "Founding Rate Sold Out" : "Early Bird Founding Rate"}
         </h2>
         <p className="pricing-subtitle">
-          Lock in your lifetime membership before spots run out.
-          The founding rate is available for a limited time only.
+          {soldOut ? (
+            <>
+              All {EARLY_BIRD_LIMIT} founding memberships have been claimed.
+              Join on the regular plan at ${REGULAR_MONTHLY_PRICE}/month.
+            </>
+          ) : (
+            <>
+              The first {EARLY_BIRD_LIMIT} members lock in ${EARLY_BIRD_MONTHLY_PRICE}/month for life.
+              Your rate holds until you cancel — then it&apos;s gone for good.
+            </>
+          )}
         </p>
       </div>
 
@@ -81,7 +104,7 @@ export function Pricing({
         <article className="plan-card">
           <p className="plan-label">Regular Plan</p>
           <div className="plan-price-row">
-            <span className="plan-amount">$65–70</span>
+            <span className="plan-amount">${REGULAR_MONTHLY_PRICE}</span>
             <span className="plan-unit">/ month</span>
           </div>
           <ul className="plan-features">
@@ -99,9 +122,11 @@ export function Pricing({
           </button>
         </article>
 
-        <article className="plan-card plan-card--featured plan-card--glow">
+        <article className={`plan-card plan-card--featured plan-card--glow${soldOut ? " plan-card--sold-out" : ""}`}>
           <div className="plan-card-badge-float">
-            <span className="plan-badge plan-badge--pill">Only 20 spots</span>
+            <span className={`plan-badge plan-badge--pill${soldOut ? " plan-badge--sold-out" : ""}`}>
+              {spotLabel}
+            </span>
           </div>
           <div className="plan-card-bg" aria-hidden="true">
             <Image
@@ -113,24 +138,25 @@ export function Pricing({
             />
           </div>
           <div className="plan-card-inner">
-            <p className="plan-label plan-label--accent">Early Bird Lifetime</p>
+            <p className="plan-label plan-label--accent">Early Bird Founding</p>
             <div className="plan-price-row">
-              <span className="plan-amount">$50</span>
-              <span className="plan-unit">/ lifetime</span>
-              <span className="plan-strike">$65–70/mo</span>
+              <span className="plan-amount">${EARLY_BIRD_MONTHLY_PRICE}</span>
+              <span className="plan-unit">/ month for life</span>
+              <span className="plan-strike">${REGULAR_MONTHLY_PRICE}/mo</span>
             </div>
             <ul className="plan-features">
               {features.map((f) => (
                 <li key={f}>{f}</li>
               ))}
-              <li>Cancel anytime</li>
+              <li>Price locked at ${EARLY_BIRD_MONTHLY_PRICE}/mo until you cancel</li>
             </ul>
             <button
               type="button"
               onClick={() => onBuy("early_bird")}
               className="plan-cta cta-gradient"
+              disabled={soldOut}
             >
-              Buy Lifetime Access <span className="arr">→</span>
+              {soldOut ? "Founding Rate Sold Out" : "Claim Founding Rate"} <span className="arr">→</span>
             </button>
           </div>
         </article>

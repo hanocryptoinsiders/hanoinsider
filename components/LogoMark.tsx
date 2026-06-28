@@ -15,7 +15,7 @@ export function LogoMark({ size = 32, className = "" }: Props) {
       style={{ width: size, height: size }}
     >
       <Image
-        src="/assets/hanoinfrontend/logo.png"
+        src="/assets/hanoinfrontend/logo1.png"
         alt="Hano Insiders Logo"
         width={size}
         height={size}

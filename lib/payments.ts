@@ -21,13 +21,13 @@ export const PLANS: Record<PlanId, PlanConfig> = {
   regular: {
     id: "regular",
     name: "Regular Plan",
-    priceLabel: "$65–70 / month",
+    priceLabel: "$79 / month",
     plan: "monthly",
   },
   early_bird: {
     id: "early_bird",
-    name: "Early Bird Lifetime",
-    priceLabel: "$50 / lifetime",
+    name: "Early Bird Founding",
+    priceLabel: "$49 / month for life",
     plan: "monthly",
     offer: "early_bird",
   },

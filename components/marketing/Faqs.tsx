@@ -21,7 +21,7 @@ const items = [
   },
   {
     q: "How does the early bird offer work?",
-    a: "The first 20 founding members lock in lifetime access for a one-time payment of $50. No monthly renewals, no price increases. Once spots fill, pricing moves to the regular monthly rate.",
+    a: "The first 20 founding members lock in $49/month for life — your rate holds until you cancel. Once all founding spots are claimed, new members join at the regular $79/month rate.",
   },
   {
     q: "What do I need to get started?",

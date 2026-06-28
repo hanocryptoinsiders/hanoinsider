@@ -24,7 +24,7 @@ export function BottomCTA() {
               Be early. Be informed. Be unstoppable.
             </h3>
             <p className="bottom-cta-sub">
-              Lock in the $50 lifetime rate and join the first wave of Hano Insiders members.
+              Lock in the $49/month founding rate for life and join the first wave of Hano Insiders members.
             </p>
           </div>
         </div>

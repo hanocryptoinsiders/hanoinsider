@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSiteUrl } from "@/lib/site-url";
 import { getStripe, getStripePriceId } from "@/lib/stripe";
 import { PLANS, isPlanId, normalizeEmail, isValidEmail } from "@/lib/payments";
+import { getEarlyBirdAvailability } from "@/lib/early-bird";
 import { getServiceSupabase } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
@@ -37,6 +38,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid plan selected." }, { status: 400 });
     }
 
+    const supabase = getServiceSupabase();
+
+    if (planId === "early_bird") {
+      const availability = await getEarlyBirdAvailability(supabase);
+      if (availability.soldOut) {
+        return NextResponse.json(
+          { error: "The founding rate is sold out. Please choose the regular plan." },
+          { status: 409 },
+        );
+      }
+    }
+
     const planConfig = PLANS[planId];
     const priceId = getStripePriceId(planConfig.plan, planConfig.offer);
     if (!priceId) {
@@ -69,7 +82,6 @@ export async function POST(request: Request) {
     };
 
     // Existing registered users renew → login. New payers → protected register.
-    const supabase = getServiceSupabase();
     const { data: paidRecord } = await supabase
       .from("paid_customers")
       .select("has_registered, user_id")

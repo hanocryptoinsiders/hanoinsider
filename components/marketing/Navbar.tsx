@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth-context";
 import { scrollToSection, useSectionScroll } from "./useSectionScroll";
 
@@ -26,14 +26,7 @@ export function Navbar() {
     <header className="topbar">
       <div className="topbar-inner">
         <Link href="/" style={{ display: "inline-flex", alignItems: "center", padding: "4px 0" }}>
-          <Image
-            src="/assets/hanoinfrontend/logoMain.png"
-            alt="Hano Insiders"
-            width={120}
-            height={36}
-            className="topbar-logo-img"
-            priority
-          />
+          <LogoMark size={32} />
         </Link>
 
         <div className="topbar-actions">

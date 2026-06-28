@@ -1,9 +1,17 @@
 "use client";
 
 import { useSectionScroll } from "./useSectionScroll";
+import { useEarlyBirdAvailability } from "./useEarlyBirdAvailability";
+import { EARLY_BIRD_MONTHLY_PRICE } from "@/lib/early-bird";
 
 export function CTA() {
   const scrollToPricing = useSectionScroll("pricing");
+  const availability = useEarlyBirdAvailability();
+  const spotsLabel = availability
+    ? availability.soldOut
+      ? "Sold out"
+      : String(availability.remaining)
+    : "20";
 
   return (
     <section id="desk" className="landing-section">
@@ -18,17 +26,21 @@ export function CTA() {
           <em>clarity.</em>
         </h2>
         <p className="sec-stand">
-          Join the first wave of members and lock in lifetime access at the
-          early bird rate. No renewals, no price increases — just the desk,
-          for life.
+          Join the first wave of members and lock in ${EARLY_BIRD_MONTHLY_PRICE}/month for life
+          at the founding rate. Your price holds until you cancel — just the desk,
+          on your terms.
         </p>
       </div>
 
       <div className="record-totals m-stat-cards" style={{ marginBottom: 40 }} data-m-reveal data-m-reveal-delay="1">
         <div className="cell">
-          <div className="lbl">Early spots</div>
-          <div className="val acc">20</div>
-          <div className="sub">Limited founding memberships at the early bird rate.</div>
+          <div className="lbl">Founding spots left</div>
+          <div className="val acc">{spotsLabel}</div>
+          <div className="sub">
+            {availability?.soldOut
+              ? "All founding memberships have been claimed."
+              : "Limited founding memberships at the early bird rate."}
+          </div>
         </div>
         <div className="cell">
           <div className="lbl">Updates</div>
@@ -36,9 +48,9 @@ export function CTA() {
           <div className="sub">Insight briefs published every week, articles monthly.</div>
         </div>
         <div className="cell">
-          <div className="lbl">Lifetime price</div>
-          <div className="val acc">$50</div>
-          <div className="sub">One payment. Permanent access. No renewals.</div>
+          <div className="lbl">Founding rate</div>
+          <div className="val acc">${EARLY_BIRD_MONTHLY_PRICE}/mo</div>
+          <div className="sub">Locked monthly rate for life. Cancel anytime.</div>
         </div>
       </div>
 

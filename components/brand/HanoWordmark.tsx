@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LogoMark } from "@/components/LogoMark";
 
 type HanoWordmarkProps = {
   compact?: boolean;
@@ -15,33 +16,15 @@ export function HanoWordmark({
   link = true,
   href = "/",
 }: HanoWordmarkProps) {
-  const fontSize = compact ? 11 : 13;
-
-  const mark = (
-    <>
-      <span style={{ color: "var(--accent-soft)" }}>Hano</span>
-      {compact ? "" : " Insiders"}
-    </>
-  );
-
-  const style = {
-    fontFamily: "var(--font-mono)",
-    fontWeight: 600,
-    fontSize,
-    letterSpacing: ".18em",
-    textTransform: "uppercase" as const,
-    color: "#fff",
-    padding: "8px 0",
-    display: "inline-block",
-    textDecoration: "none",
-  };
+  const size = compact ? 28 : 36;
+  const mark = <LogoMark size={size} />;
 
   if (!link) {
-    return <span style={style}>{mark}</span>;
+    return mark;
   }
 
   return (
-    <Link href={href} style={style}>
+    <Link href={href} style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
       {mark}
     </Link>
   );
