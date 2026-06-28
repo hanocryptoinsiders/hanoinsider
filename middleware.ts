@@ -35,6 +35,11 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Refresh auth cookies on password-reset flow too
+  if (pathname === "/reset-password") {
+    return supabaseResponse;
+  }
+
   // Helper to construct a redirect response with synced cookies
   const redirect = (toUrl: string | URL) => {
     const redirectResponse = NextResponse.redirect(toUrl);
@@ -121,6 +126,7 @@ export const config = {
     "/dashboard/:path*",
     "/login",
     "/register",
+    "/reset-password",
     "/auth/:path*",
   ],
 };

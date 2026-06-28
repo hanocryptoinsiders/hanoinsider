@@ -152,12 +152,12 @@ function MarketOverview({ snap }: { snap: MarketSnapshot }) {
 
   return (
     <section className="dash-card dash-card--hero">
-      <div className="dash-card-head">
+      <div className="dash-card-head dash-market-head">
         <div>
           <p className="dash-card-kicker">
             <span className={isLive ? "acc" : ""}>{isLive ? "Live" : "Demo"}</span>
             <span className="bar" />
-            <span>Market overview</span>
+            <span className="dash-market-kicker-label">Market overview</span>
             {snap.fetchedAt ? (
               <>
                 <span className="bar hidden sm:inline" />
@@ -167,7 +167,7 @@ function MarketOverview({ snap }: { snap: MarketSnapshot }) {
           </p>
           <h2 className="dash-card-title dash-card-title--lg">Total market snapshot</h2>
         </div>
-        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
+        <div className="dash-market-range-wrap flex flex-col items-end gap-2 sm:flex-row sm:items-center">
           <div className="dash-range-toggle">
             {RANGES.map((r) => (
               <button

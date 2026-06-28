@@ -2780,14 +2780,41 @@
     background: rgba(155, 130, 220, .1);
   }
   @media (max-width: 639px) {
+    .dash-market-head {
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .dash-market-head > div:first-child {
+      flex: 1;
+      min-width: 0;
+    }
+    .dash-market-head .dash-card-kicker {
+      flex-wrap: nowrap;
+      gap: 6px;
+      font-size: 9px;
+      letter-spacing: .14em;
+    }
+    .dash-market-head .dash-card-kicker .bar {
+      width: 12px;
+      flex-shrink: 0;
+    }
+    .dash-market-kicker-label {
+      white-space: nowrap;
+    }
+    .dash-market-range-wrap {
+      flex-shrink: 0;
+    }
     .dash-range-toggle {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      width: 100%;
+      grid-template-columns: repeat(2, auto);
+      width: auto;
     }
     .dash-range-btn {
       border-right: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
+      padding: 6px 10px;
+      min-width: 44px;
+      text-align: center;
     }
     .dash-range-btn:nth-child(2n) { border-right: 0; }
     .dash-range-btn:nth-child(n + 3) { border-bottom: 0; }

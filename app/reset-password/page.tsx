@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/LogoMark";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Eye, EyeOff, ShieldCheck, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, ShieldCheck, AlertTriangle, CheckCircle2, ArrowLeft } from "lucide-react";
 
 type PageState = "loading" | "ready" | "success" | "error";
 
@@ -298,8 +298,9 @@ export default function ResetPassword() {
               </form>
 
               <div className="mt-5 flex items-center justify-between">
-                <Link href="/login" className="text-xs text-muted-foreground hover:text-foreground transition">
-                  â† Back to sign in
+                <Link href="/login" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
+                  <ArrowLeft className="h-3 w-3" />
+                  Back to sign in
                 </Link>
                 <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                   <ShieldCheck className="h-3 w-3" />
