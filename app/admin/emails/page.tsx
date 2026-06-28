@@ -128,7 +128,7 @@ export default function AdminEmailsPage() {
 
           <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border pt-4">
             Safeguards: admin-only, server-side validation, paid-recipient list only, and at least one minute between sends.
-            Large lists are batched (20 per request, max 500 total). Configure{" "}
+            Recipients are sent via Resend&apos;s batch API (up to 100 per request, max 500 total). Configure{" "}
             <code className="text-[10px] bg-secondary px-1 rounded">RESEND_API_KEY</code> and a verified{" "}
             <code className="text-[10px] bg-secondary px-1 rounded">EMAIL_FROM</code> domain for delivery.
           </p>

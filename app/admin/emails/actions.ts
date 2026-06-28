@@ -2,10 +2,9 @@
 
 import { requireAdmin } from "@/lib/auth";
 import { getServiceSupabase } from "@/lib/supabase/service";
-import { sendEmail } from "@/lib/email/resend";
+import { sendEmailBatch } from "@/lib/email/resend";
 import { buildCommunityUpdateEmail } from "@/lib/email/community-email";
 
-const BATCH_SIZE = 20;
 const MIN_INTERVAL_MS = 60_000; // at most one broadcast per minute per admin desk
 const MAX_RECIPIENTS = 500;
 
@@ -99,35 +98,32 @@ export async function sendCommunityEmail(
   }
 
   const built = buildCommunityUpdateEmail(trimmedSubject, trimmedMessage);
-  let sent = 0;
-  let skipped = 0;
+  const payload = recipients.map((recipient) => ({
+    to: recipient,
+    subject: built.subject,
+    html: built.html,
+    text: built.text,
+    tags: [{ name: "type", value: "community_update" }],
+  }));
 
-  // Send one email per recipient so the To header never exposes the full list.
-  for (let i = 0; i < recipients.length; i++) {
-    const recipient = recipients[i];
-    const result = await sendEmail({
-      to: recipient,
-      subject: built.subject,
-      html: built.html,
-      text: built.text,
-      tags: [{ name: "type", value: "community_update" }],
-    });
+  const result = await sendEmailBatch(payload);
 
-    if (result.skipped) {
-      skipped++;
-    } else if (result.error) {
-      return {
-        success: false,
-        error: `Send failed for recipient ${i + 1} of ${recipients.length}: ${result.error}`,
-      };
-    } else {
-      sent++;
-    }
-
-    if (i + 1 < recipients.length && (i + 1) % BATCH_SIZE === 0) {
-      await new Promise((r) => setTimeout(r, 300));
-    }
+  if (result.skipped) {
+    return { success: true, sent: 0, skipped: recipients.length };
   }
+
+  if (result.error) {
+    return {
+      success: false,
+      error:
+        result.sent > 0
+          ? `Send partially failed after ${result.sent} of ${recipients.length} recipients: ${result.error}`
+          : `Send failed: ${result.error}`,
+    };
+  }
+
+  const sent = result.sent;
+  const skipped = Math.max(0, recipients.length - sent);
 
   await supabase.from("community_email_log").insert({
     subject: trimmedSubject,
