@@ -15,6 +15,7 @@ export interface ContentItem {
   category: string | null;
   tags: string[];
   is_premium: boolean;
+  is_public?: boolean;
   status: "draft" | "published" | "archived";
   video_url: string | null;
   related_coin_slug?: string | null;
@@ -52,7 +53,7 @@ export async function getContentItems(type?: "insight" | "article" | "video", ad
   const supabase = await createClient();
 
   const columns =
-    "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, status, published_at, created_at, related_coin_slug";
+    "id, title, slug, description, thumbnail_url, content_type, category, tags, is_premium, is_public, status, published_at, created_at, related_coin_slug";
 
   if (adminMode) {
     // 1. Double check admin privilege on the server
@@ -139,6 +140,7 @@ export async function updateContentItem(id: string, data: Partial<ContentItem>):
   const supabase = await createClient();
 
   const updatePayload: any = { ...data };
+  delete updatePayload.is_public;
   if (data.status === "published" && !data.published_at) {
     updatePayload.published_at = new Date().toISOString();
   }
@@ -196,7 +198,7 @@ export async function archiveContentItem(id: string, contentType: string): Promi
 
   const { error } = await supabase
     .from("content_items")
-    .update({ status: "archived" })
+    .update({ status: "archived", is_public: false })
     .eq("id", id);
 
   if (error) {
@@ -222,5 +224,49 @@ export async function togglePremiumContent(id: string, currentlyPremium: boolean
 
   revalidatePath("/admin/content");
   revalidatePath(`/dashboard/${contentType}s`);
+}
+
+/**
+ * Fetches a publicly shared content item by slug.
+ * Works for anonymous visitors via the public_shared_content view.
+ */
+export async function getPublicSharedContentBySlug(slug: string): Promise<ContentItem | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("public_shared_content")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data as ContentItem | null;
+}
+
+/**
+ * Admin-only: toggle whether a published item is publicly shareable at /share/[slug].
+ */
+export async function togglePublicContent(
+  id: string,
+  slug: string,
+  currentlyPublic: boolean,
+  contentType: string,
+): Promise<void> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("content_items")
+    .update({ is_public: !currentlyPublic })
+    .eq("id", id)
+    .eq("status", "published");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin/content");
+  revalidatePath(`/dashboard/${contentType}s`);
+  revalidatePath(`/share/${slug}`);
 }
 

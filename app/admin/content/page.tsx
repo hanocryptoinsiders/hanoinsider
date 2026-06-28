@@ -20,6 +20,9 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Link2,
+  Copy,
+  Globe,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import { RichReader } from "@/lib/rich-text";
@@ -33,6 +36,7 @@ import {
   publishContentItem,
   archiveContentItem,
   togglePremiumContent,
+  togglePublicContent,
   type ContentItem,
 } from "@/lib/content";
 import { uploadContentThumbnail } from "@/lib/content-upload";
@@ -41,7 +45,7 @@ import { toast } from "sonner";
 
 const categories = ["Macro", "Bitcoin", "Ethereum", "Altcoins", "On-chain", "Education", "Trading"];
 
-type FilterKey = "All" | "insight" | "article" | "video" | "draft" | "published" | "archived" | "standard" | "premium";
+type FilterKey = "All" | "insight" | "article" | "video" | "draft" | "published" | "archived" | "standard" | "premium" | "public";
 
 type FormState = {
   type: "insight" | "article" | "video";
@@ -265,6 +269,26 @@ export default function AdminContent() {
     }
   };
 
+  const handleTogglePublic = async (item: ContentItem) => {
+    try {
+      await togglePublicContent(item.id, item.slug, !!item.is_public, item.content_type);
+      toast.success(item.is_public ? "Removed from public sharing" : "Content is now publicly shareable");
+      loadItems();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to toggle public sharing");
+    }
+  };
+
+  const handleCopyShareLink = async (slug: string) => {
+    const url = `${window.location.origin}/share/${slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Share link copied to clipboard");
+    } catch {
+      toast.error("Could not copy link — copy manually: " + url);
+    }
+  };
+
   const handleCloseEditor = () => {
     if (draft.title || draft.body !== emptyForm.body) {
       if (!confirm("Discard unsaved changes?")) return;
@@ -281,6 +305,7 @@ export default function AdminContent() {
     if (filter === "All") return true;
     if (filter === "standard") return !c.is_premium;
     if (filter === "premium") return c.is_premium;
+    if (filter === "public") return !!c.is_public;
     if (filter === "insight" || filter === "article" || filter === "video") {
       return c.content_type === filter;
     }
@@ -299,6 +324,7 @@ export default function AdminContent() {
     archived: "Archived",
     standard: "Standard",
     premium: "Premium",
+    public: "Public",
   };
 
   return (
@@ -760,7 +786,7 @@ export default function AdminContent() {
             {[
               { label: "Total", value: content.length },
               { label: "Published", value: content.filter((c) => c.status === "published").length },
-              { label: "Premium", value: content.filter((c) => c.is_premium).length },
+              { label: "Public", value: content.filter((c) => c.is_public).length },
               { label: "Drafts", value: content.filter((c) => c.status === "draft").length },
             ].map((s) => (
               <div key={s.label} className="px-5 py-3 text-center">
@@ -770,13 +796,14 @@ export default function AdminContent() {
             ))}
           </div>
 
-          <table className="w-full text-sm min-w-[960px]">
+          <table className="w-full text-sm min-w-[1060px]">
             <thead>
               <tr className="text-left text-[10px] tracking-wider text-muted-foreground border-b border-border bg-secondary/5">
                 <th className="px-5 py-3">TYPE</th>
                 <th className="px-5 py-3">TITLE</th>
                 <th className="px-5 py-3">STATUS</th>
                 <th className="px-5 py-3">TIER</th>
+                <th className="px-5 py-3">PUBLIC</th>
                 <th className="px-5 py-3">CATEGORY</th>
                 <th className="px-5 py-3">PUBLISHED</th>
                 <th className="px-5 py-3 text-right">ACTIONS</th>
@@ -785,7 +812,7 @@ export default function AdminContent() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-sm text-muted-foreground">
+                  <td colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
                     No content items found for the selected filter.
                   </td>
                 </tr>
@@ -853,6 +880,17 @@ export default function AdminContent() {
                       </span>
                     </td>
 
+                    {/* Public share */}
+                    <td className="px-5 py-3.5">
+                      {c.is_public ? (
+                        <span className="text-[10px] font-mono tracking-wider rounded px-2 py-0.5 font-medium bg-sky-500/15 text-sky-400 border border-sky-500/20">
+                          PUBLIC
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground/50">—</span>
+                      )}
+                    </td>
+
                     {/* Category */}
                     <td className="px-5 py-3.5 text-xs text-muted-foreground">
                       {c.category || ""}
@@ -904,6 +942,45 @@ export default function AdminContent() {
                             <StarOff className="h-3.5 w-3.5" />
                           )}
                         </button>
+
+                        {/* Toggle public share (published only) */}
+                        {c.status === "published" && (
+                          <button
+                            onClick={() => handleTogglePublic(c)}
+                            title={c.is_public ? "Remove public sharing" : "Make publicly shareable"}
+                            className={`rounded p-1.5 hover:bg-accent transition ${
+                              c.is_public
+                                ? "text-sky-400"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <Globe className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+
+                        {/* Copy public share link */}
+                        {c.status === "published" && c.is_public && (
+                          <button
+                            onClick={() => handleCopyShareLink(c.slug)}
+                            title="Copy public share link"
+                            className="rounded p-1.5 hover:bg-sky-500/10 text-sky-400 transition"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+
+                        {/* Open public share page */}
+                        {c.status === "published" && c.is_public && (
+                          <a
+                            href={`/share/${c.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Open public share page"
+                            className="rounded p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground transition"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </a>
+                        )}
 
                         {/* View live page (published only) */}
                         {c.status === "published" && (
