@@ -51,7 +51,13 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
   const [isLoadingLikesComments, setIsLoadingLikesComments] = useState(true);
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [canShare, setCanShare] = useState(item.is_public === true);
   const [discussionReloadKey, setDiscussionReloadKey] = useState(0);
+
+  const actionBtn =
+    "inline-flex items-center gap-2 rounded-lg border border-transparent px-3 py-1.5 text-xs font-medium transition-colors";
+  const actionBtnDefault =
+    "text-muted-foreground hover:border-border/60 hover:bg-secondary/80 hover:text-foreground";
 
   const backTo =
     contentType === "insight"
@@ -62,6 +68,33 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
 
   const readingTime = item.body ? estimateReadingMinutes(item.body) : 5;
   const relatedCoin = item.related_coin_slug ? findCoinProfile(item.related_coin_slug) : undefined;
+
+  useEffect(() => {
+    if (item.is_public === true) {
+      setCanShare(true);
+      return;
+    }
+    if (!item.slug?.trim()) {
+      setCanShare(false);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("public_shared_content")
+        .select("slug")
+        .eq("slug", item.slug)
+        .maybeSingle();
+      if (!cancelled) {
+        setCanShare(!!data);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [item.is_public, item.slug, supabase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -263,25 +296,7 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
   };
 
   const handleShare = async () => {
-    if (!item.slug?.trim()) {
-      toast.error("This item has no shareable link yet.");
-      return;
-    }
-
-    let isPublic = item.is_public;
-    if (isPublic !== true) {
-      const { data: shared } = await supabase
-        .from("public_shared_content")
-        .select("slug")
-        .eq("slug", item.slug)
-        .maybeSingle();
-      isPublic = !!shared;
-    }
-
-    if (!isPublic) {
-      toast.error("Make this content public in admin before copying a share link.");
-      return;
-    }
+    if (!item.slug?.trim() || !canShare) return;
 
     setIsSharing(true);
     const url = getPublicShareUrl(item.slug);
@@ -397,40 +412,50 @@ export default function ContentReaderDisplay({ item, locked, contentType }: Cont
       <div className="mt-8 flex items-center justify-between border-y border-border py-3">
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={handleLikeToggle}
-            className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs hover:bg-accent transition ${
-              hasLiked ? "text-[oklch(0.78_0.14_85)] bg-secondary/30" : "text-muted-foreground"
+            className={`${actionBtn} ${
+              hasLiked
+                ? "border-border/50 bg-secondary/60 text-[oklch(0.78_0.14_85)] hover:bg-secondary hover:text-[oklch(0.82_0.14_85)]"
+                : actionBtnDefault
             }`}
           >
             <Heart className={`h-3.5 w-3.5 ${hasLiked ? "fill-current" : ""}`} />
             {likesCount}
           </button>
           <button
+            type="button"
             onClick={scrollToComments}
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition"
+            className={`${actionBtn} ${actionBtnDefault}`}
           >
             <MessageCircle className="h-3.5 w-3.5" /> {comments.length}
           </button>
         </div>
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={() => setSaved((v) => !v)}
-            className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs hover:bg-accent transition ${
-              saved ? "text-foreground" : "text-muted-foreground"
+            className={`${actionBtn} ${
+              saved
+                ? "border-border/50 bg-secondary/60 text-foreground hover:bg-secondary hover:text-foreground"
+                : actionBtnDefault
             }`}
           >
             <Bookmark className={`h-3.5 w-3.5 ${saved ? "fill-current" : ""}`} />
             {saved ? "Saved" : "Save"}
           </button>
-          <button
-            type="button"
-            onClick={handleShare}
-            disabled={isSharing}
-            title={item.is_public ? "Copy public share link" : "Not public — enable sharing in admin"}
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition disabled:opacity-50"
-          >
-            <Share2 className="h-3.5 w-3.5" /> {isSharing ? "…" : "Share"}
-          </button>
+          {canShare && (
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={isSharing}
+              title="Copy public share link"
+              aria-label="Share public link"
+              className={`${actionBtn} ${actionBtnDefault} disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
+            >
+              <Share2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

@@ -4,28 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin, getCurrentProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-export interface ContentItem {
-  id: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  body: string | null;
-  thumbnail_url: string | null;
-  content_type: "insight" | "article" | "video";
-  category: string | null;
-  tags: string[];
-  is_premium: boolean;
-  /** When true the item is shareable publicly at /share/[slug] without login. */
-  is_public?: boolean;
-  status: "draft" | "published" | "archived";
-  video_url: string | null;
-  /** Optional slug linking to /dashboard/coins/[slug] (e.g. bitcoin, ethereum). */
-  related_coin_slug?: string | null;
-  author_id: string | null;
-  published_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type { ContentItem } from "@/lib/content-types";
+import type { ContentItem } from "@/lib/content-types";
 
 // ������ Helpers ������������������������������������������������������������������������������������������������������������������
 
@@ -263,27 +243,5 @@ export async function togglePublicContent(
   revalidatePath(`/dashboard/${contentType}s`);
   revalidatePath(`/share/${item.slug}`);
   return { slug: item.slug, is_public: item.is_public, status: item.status };
-}
-
-/**
- * Public reader: fetch a publicly-shared, published item by slug.
- * Reads the `public_shared_content` view, which only exposes rows where
- * is_public = true AND status = 'published'. Works for anonymous visitors
- * (no login required) and never returns drafts, private, or admin-only data.
- */
-export async function getPublicContentBySlug(slug: string): Promise<ContentItem | null> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("public_shared_content")
-    .select("*")
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (error) {
-    console.error("getPublicContentBySlug failed:", error.message);
-    return null;
-  }
-  return (data as ContentItem | null) ?? null;
 }
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Clock } from "lucide-react";
-import { getPublicContentBySlug } from "@/lib/content";
+import { getPublicContentBySlug } from "@/lib/content-public";
 import { RichReader } from "@/lib/rich-text";
 import { estimateReadingMinutes } from "@/lib/content-body";
 import { HanoWordmark } from "@/components/brand/HanoWordmark";
@@ -10,6 +10,8 @@ import { HanoWordmark } from "@/components/brand/HanoWordmark";
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
