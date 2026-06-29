@@ -16,13 +16,25 @@ import {
   Lock,
 } from "lucide-react";
 
+/**
+ * /reset-password
+ *
+ * This page is reached AFTER /auth/callback has already exchanged the
+ * PKCE code and established a valid Supabase session.
+ *
+ * The only job of this page is:
+ *   1. Verify a session exists (via getUser)
+ *   2. Let the user set a new password
+ *   3. Call updateUser({ password })
+ *   4. Sign out and redirect to /login?password_updated=true
+ */
+
 type PageState = "loading" | "ready" | "success" | "error";
 
 export default function ResetPassword() {
   const router = useRouter();
 
   const [pageState, setPageState] = useState<PageState>("loading");
-  const [loadingMessage, setLoadingMessage] = useState("Verifying reset link…");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -31,144 +43,33 @@ export default function ResetPassword() {
   const [fieldErrors, setFieldErrors] = useState<{ password?: string; confirm?: string }>({});
   const [errorMessage, setErrorMessage] = useState("");
 
+  // ── Session check on mount ──────────────────────────────────────────────
+  // The session was already established by /auth/callback.
+  // We simply verify that it exists.
   useEffect(() => {
     let cancelled = false;
 
-    const fail = (message: string) => {
-      if (cancelled) return;
-      setErrorMessage(message);
-      setPageState("error");
-    };
-
-    const succeed = () => {
-      if (cancelled) return;
-      // Clean the URL of any token params so they cannot be replayed
-      window.history.replaceState(null, "", "/reset-password");
-      setPageState("ready");
-    };
-
-    const establishSession = async () => {
+    const checkSession = async () => {
       const supabase = createClient();
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
-      const tokenHash = params.get("token_hash");
-      const type = params.get("type");
-      const hasHashTokens =
-        typeof window !== "undefined" && window.location.hash.includes("access_token");
-
-      // ── Branch 1: token_hash (PKCE email link) ────────────────────────────
-      // Arrives when the user is sent DIRECTLY here (not via /auth/callback).
-      // Verify the OTP once, consuming the token permanently.
-      if (tokenHash && type === "recovery") {
-        setLoadingMessage("Verifying your reset link…");
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: "recovery",
-        });
-        if (cancelled) return;
-        if (error) {
-          fail("This reset link is invalid or has already been used. Please request a new one.");
-          return;
-        }
-        succeed();
-        return;
-      }
-
-      // ── Branch 2: PKCE authorization code ─────────────────────────────────
-      if (code) {
-        setLoadingMessage("Completing verification…");
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (cancelled) return;
-        if (error) {
-          fail("This reset link is invalid or has already been used. Please request a new one.");
-          return;
-        }
-        succeed();
-        return;
-      }
-
-      // ── Branch 3: Implicit / hash-based tokens ────────────────────────────
-      // Old-style Supabase links put tokens in the URL hash (#access_token=…).
-      if (hasHashTokens) {
-        setLoadingMessage("Establishing secure session…");
-
-        const hasSession = await new Promise<boolean>((resolve) => {
-          let settled = false;
-          let unsub: (() => void) | undefined;
-
-          // First, set up the auth state listener
-          const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, session) => {
-              if (
-                !settled &&
-                session &&
-                (event === "INITIAL_SESSION" ||
-                  event === "SIGNED_IN" ||
-                  event === "PASSWORD_RECOVERY")
-              ) {
-                settled = true;
-                clearTimeout(timer);
-                subscription.unsubscribe();
-                resolve(true);
-              }
-            }
-          );
-          unsub = () => subscription.unsubscribe();
-
-          // Timeout with a final getUser() check (bumped 4s → 6s for slow connections)
-          const timer = window.setTimeout(() => {
-            if (!settled) {
-              settled = true;
-              unsub?.();
-              supabase.auth.getUser().then(({ data: { user } }) => {
-                resolve(!!user);
-              });
-            }
-          }, 6000);
-
-          // Also check immediately — the token might already be parsed
-          supabase.auth.getUser().then(({ data: { user } }) => {
-            if (!settled && user) {
-              settled = true;
-              clearTimeout(timer);
-              unsub?.();
-              resolve(true);
-            }
-          });
-        });
-
-        if (cancelled) return;
-        if (hasSession) {
-          succeed();
-          return;
-        }
-        fail("This reset link is invalid or has expired. Please request a new password reset.");
-        return;
-      }
-
-      // ── Branch 4: No token params — session already established by /auth/callback ──
-      // The most common flow: /auth/callback consumed the token, set the session
-      // cookie, and redirected here with a clean URL. Simply trust getUser().
-      setLoadingMessage("Loading your session…");
       const { data: { user } } = await supabase.auth.getUser();
+
       if (cancelled) return;
 
       if (user) {
-        succeed();
-        return;
+        setPageState("ready");
+      } else {
+        setErrorMessage(
+          "Your reset session could not be found. The link may have expired or already been used. Please request a new password reset."
+        );
+        setPageState("error");
       }
-
-      fail(
-        "Your reset session could not be found. The link may have expired or already been used. Please request a new password reset."
-      );
     };
 
-    void establishSession();
+    void checkSession();
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Password strength meter ───────────────────────────────────────────────
@@ -199,8 +100,6 @@ export default function ResetPassword() {
     const errors: { password?: string; confirm?: string } = {};
     if (!password) errors.password = "Password is required";
     else if (password.length < 8) errors.password = "Password must be at least 8 characters";
-    else if (passwordStrength < 2)
-      errors.password = "Password is too weak. Add numbers or symbols.";
     if (!confirmPassword) errors.confirm = "Please confirm your new password";
     else if (password !== confirmPassword) errors.confirm = "Passwords do not match";
     setFieldErrors(errors);
@@ -227,16 +126,17 @@ export default function ResetPassword() {
       } else if (error.message.toLowerCase().includes("weak")) {
         setFieldErrors({ password: error.message });
       } else {
+        console.error("[reset-password] updateUser failed:", error.message);
         setErrorMessage(error.message || "Failed to update password. Please try again.");
         setPageState("error");
       }
       return;
     }
 
-    // Show success UI FIRST — then sign out fire-and-forget to avoid racing
+    // Password updated successfully — show success, sign out, redirect
     setPageState("success");
-    supabase.auth.signOut().catch(() => {/* ignore */});
-    setTimeout(() => router.replace("/login?reset=true"), 2500);
+    await supabase.auth.signOut();
+    setTimeout(() => router.replace("/login?password_updated=true"), 2500);
   };
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -250,7 +150,7 @@ export default function ResetPassword() {
             </div>
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground absolute -bottom-1 -right-1" />
           </div>
-          <p className="text-sm text-muted-foreground">{loadingMessage}</p>
+          <p className="text-sm text-muted-foreground">Verifying your session…</p>
         </div>
       </div>
     );
@@ -304,14 +204,17 @@ export default function ResetPassword() {
               </p>
               <div className="mt-6 flex flex-col gap-2">
                 <Link
-                  href="/login"
+                  href="/forgot-password"
                   className="inline-flex w-full items-center justify-center rounded-xl bg-foreground text-background py-3 text-sm font-semibold hover:bg-foreground/90 transition"
+                >
+                  Request a new reset link
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-border py-2.5 text-sm hover:bg-secondary/40 transition"
                 >
                   Back to sign in
                 </Link>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Click &ldquo;Forgot password?&rdquo; on the sign-in page to request a fresh link.
-                </p>
               </div>
             </div>
           )}

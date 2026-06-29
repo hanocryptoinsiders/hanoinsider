@@ -7,8 +7,7 @@ import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff, ShieldCheck, AlertCircle, ArrowLeft } from "lucide-react";
-import { getSiteUrl } from "@/lib/site-url";
+import { Loader2, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
 
 function LoginContent() {
   const router = useRouter();
@@ -22,11 +21,7 @@ function LoginContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
-  // Forgot password state
-  const [showForgot, setShowForgot] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [isResetting, setIsResetting] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
+
 
   // Handle auth messages from URL
   useEffect(() => {
@@ -42,7 +37,7 @@ function LoginContent() {
     if (error === "oauth_failed") {
       toast.error("Sign-in failed. Please try again.");
     }
-    if (searchParams.get("reset") === "true") {
+    if (searchParams.get("reset") === "true" || searchParams.get("password_updated") === "true") {
       toast.success("Password updated successfully. Please sign in with your new password.");
     }
     if (searchParams.get("renewed") === "1") {
@@ -111,25 +106,7 @@ function LoginContent() {
     router.replace("/dashboard");
   };
 
-  // Password Reset
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetEmail) { toast.error("Enter your email address"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) { toast.error("Enter a valid email address"); return; }
 
-    setIsResetting(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${getSiteUrl()}/reset-password`,
-    });
-    setIsResetting(false);
-
-    if (error) {
-      toast.error(error.message || "Failed to send reset link");
-      return;
-    }
-
-    setResetSent(true);
-  };
 
   if (isLoading) {
     return (
@@ -158,8 +135,7 @@ function LoginContent() {
           </Link>
 
           {/* Sign In View */}
-          {!showForgot ? (
-            <>
+          <>
               {!isLoading && user && !isPremium && (
                 <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-xs text-amber-200/90">
                   <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -199,13 +175,12 @@ function LoginContent() {
                 <div>
                   <div className="flex items-center justify-between">
                     <label htmlFor="login-password" className="text-xs font-medium text-muted-foreground">Password</label>
-                    <button
-                      type="button"
-                      onClick={() => { setShowForgot(true); setResetEmail(email); }}
+                    <Link
+                      href="/forgot-password"
                       className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Forgot password?
-                    </button>
+                    </Link>
                   </div>
                   <div className="relative mt-1.5">
                     <input
@@ -252,66 +227,7 @@ function LoginContent() {
                   <span>Secured by Supabase</span>
                 </div>
               </div>
-            </>
-          ) : (
-            /* Forgot Password View */
-            <>
-              <button
-                onClick={() => { setShowForgot(false); setResetSent(false); }}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition mb-6"
-              >
-                <ArrowLeft className="h-3 w-3" />
-                Back to sign in
-              </button>
-
-              {!resetSent ? (
-                <>
-                  <h1 className="font-display text-3xl">Reset password</h1>
-                  <p className="text-sm text-muted-foreground mt-1 mb-6">
-                    Enter your email and we'll send you a secure reset link.
-                  </p>
-                  <form onSubmit={handleReset} noValidate className="space-y-4">
-                    <div>
-                      <label htmlFor="reset-email" className="text-xs font-medium text-muted-foreground">Email address</label>
-                      <input
-                        id="reset-email"
-                        type="email"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        autoComplete="email"
-                        className="mt-1.5 w-full rounded-lg border border-border/80 bg-background/80 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 focus:border-ring transition"
-                        placeholder="you@hanoinsiders.com"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={isResetting}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground text-background py-3 text-sm font-semibold hover:bg-foreground/90 transition disabled:opacity-40"
-                    >
-                      {isResetting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send reset link"}
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
-                    <ShieldCheck className="h-7 w-7 text-success" />
-                  </div>
-                  <h2 className="font-display text-2xl">Check your inbox</h2>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    We sent a reset link to <strong className="text-foreground">{resetEmail}</strong>.
-                    It expires in 1 hour.
-                  </p>
-                  <button
-                    onClick={() => { setShowForgot(false); setResetSent(false); }}
-                    className="mt-6 w-full rounded-xl border border-border py-2.5 text-sm hover:bg-secondary/40 transition"
-                  >
-                    Back to sign in
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+          </>
         </div>
       </div>
     </div>
