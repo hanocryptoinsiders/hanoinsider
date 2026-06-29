@@ -85,10 +85,21 @@ function AuthCallbackContent() {
     const run = async () => {
       const supabase = createClient();
 
-      // Surface any OAuth error immediately
+      // Supabase injects ?error=... for both OAuth failures AND expired OTP
+      // links (e.g. error=access_denied&error_code=otp_expired). Distinguish
+      // them so the user gets the right message.
       const errorParam = searchParams.get("error");
       if (errorParam) {
-        router.replace("/login?error=oauth_failed");
+        const errorCode = searchParams.get("error_code") ?? "";
+        const isOtpError =
+          errorCode.includes("otp") ||
+          errorCode.includes("expired") ||
+          errorCode.includes("invalid") ||
+          errorParam === "access_denied";
+
+        router.replace(
+          isOtpError ? "/login?error=link_expired" : "/login?error=auth_callback_failed"
+        );
         return;
       }
 

@@ -31,9 +31,16 @@ function LoginContent() {
   // Handle auth messages from URL
   useEffect(() => {
     const error = searchParams.get("error");
-    if (error === "auth_failed") toast.error("Authentication failed. Please try again.");
-    if (error === "auth_callback_failed" || error === "link_expired") {
-      toast.error("Verification failed or link expired. Please try again.");
+    if (error === "auth_failed" || error === "auth_callback_failed") {
+      toast.error("Authentication failed. Please try again.");
+    }
+    if (error === "link_expired") {
+      toast.error("This reset link has expired or already been used. Please request a new one.", {
+        duration: 6000,
+      });
+    }
+    if (error === "oauth_failed") {
+      toast.error("Sign-in failed. Please try again.");
     }
     if (searchParams.get("reset") === "true") {
       toast.success("Password updated successfully. Please sign in with your new password.");
@@ -112,7 +119,7 @@ function LoginContent() {
 
     setIsResetting(true);
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${getSiteUrl()}/auth/callback?type=recovery`,
+      redirectTo: `${getSiteUrl()}/reset-password`,
     });
     setIsResetting(false);
 
