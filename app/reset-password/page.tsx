@@ -30,6 +30,21 @@ import {
  */
 
 type PageState = "loading" | "ready" | "success" | "error";
+const AUTH_TIMEOUT_MS = 20_000;
+
+function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
+  let timeoutId!: ReturnType<typeof setTimeout>;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), AUTH_TIMEOUT_MS);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+function clearPasswordRecoveryMarker() {
+  document.cookie = "hano_password_recovery=; path=/; max-age=0; SameSite=Lax";
+}
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -50,16 +65,33 @@ export default function ResetPassword() {
     let cancelled = false;
 
     const checkSession = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      try {
+        const supabase = createClient();
+        const { data: { user }, error } = await withTimeout(
+          supabase.auth.getUser(),
+          "Session verification timed out. Please request a new password reset link."
+        );
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      if (user) {
+        if (error || !user) {
+          clearPasswordRecoveryMarker();
+          setErrorMessage(
+            "Your reset session could not be found. The link may have expired or already been used. Please request a new password reset."
+          );
+          setPageState("error");
+          return;
+        }
+
         setPageState("ready");
-      } else {
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[reset-password] Session verification failed:", err);
+        clearPasswordRecoveryMarker();
         setErrorMessage(
-          "Your reset session could not be found. The link may have expired or already been used. Please request a new password reset."
+          err instanceof Error
+            ? err.message
+            : "We could not verify your reset session. Please request a new password reset link."
         );
         setPageState("error");
       }
@@ -109,6 +141,7 @@ export default function ResetPassword() {
   // ── Submit new password ───────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || pageState !== "ready") return;
     if (!validate()) return;
 
     setIsSubmitting(true);
@@ -116,7 +149,10 @@ export default function ResetPassword() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.updateUser({ password });
+      const { error } = await withTimeout(
+        supabase.auth.updateUser({ password }),
+        "Password update timed out. Please check your connection and try again."
+      );
 
       if (error) {
         if (error.message.toLowerCase().includes("same password")) {
@@ -133,20 +169,26 @@ export default function ResetPassword() {
         return;
       }
 
-      // Password updated successfully
-      console.log("[reset-password] ✅ Password updated successfully");
-
-      // Show success UI immediately, then sign out
       setPageState("success");
+      clearPasswordRecoveryMarker();
 
-      // Sign out fire-and-forget so AuthProvider's onAuthStateChange
-      // (which calls router.refresh()) cannot block or crash this handler.
-      supabase.auth.signOut().catch(() => {/* ignore */});
+      await Promise.allSettled([
+        withTimeout(
+          fetch("/api/auth/signout", { method: "POST" }),
+          "Server sign-out timed out."
+        ),
+        withTimeout(
+          supabase.auth.signOut(),
+          "Browser sign-out timed out."
+        ),
+      ]);
 
-      setTimeout(() => router.replace("/login?password_updated=true"), 2500);
+      router.replace("/login?password_updated=true");
     } catch (err) {
       console.error("[reset-password] Unexpected error:", err);
-      setErrorMessage("Something went wrong. Please try again.");
+      setErrorMessage(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
       setPageState("error");
     } finally {
       setIsSubmitting(false);

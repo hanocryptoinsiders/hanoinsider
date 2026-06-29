@@ -57,7 +57,18 @@ export async function GET(request: Request) {
       // only allow relative paths starting with "/" and not "//".
       const safePath =
         next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-      return NextResponse.redirect(`${origin}${safePath}`);
+      const response = NextResponse.redirect(`${origin}${safePath}`);
+
+      if (safePath === "/reset-password") {
+        response.cookies.set("hano_password_recovery", "1", {
+          path: "/",
+          maxAge: 60 * 60,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+        });
+      }
+
+      return response;
     }
 
     console.error("[auth/callback] Code exchange failed:", error.message);

@@ -6,9 +6,10 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -59,12 +60,14 @@ const makeMockProfiles = (): Record<UserRole, UserProfile> => ({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const pathname = usePathname();
+  const isPasswordRecoveryRoute = pathname === "/reset-password";
 
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [mockProfiles] = useState(makeMockProfiles);
+  const [mockProfiles, setMockProfiles] = useState(makeMockProfiles);
   const [mockRole, setMockRoleState] = useState<UserRole>("free");
   const [isLoading, setIsLoading] = useState(true);
   const [isMockMode, setIsMockMode] = useState(false);
@@ -136,7 +139,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setUser(authUser);
-        await fetchProfile(authUser);
+        if (isPasswordRecoveryRoute) {
+          setProfile(null);
+        } else {
+          await fetchProfile(authUser);
+        }
       } catch {
         if (mounted) setIsLoading(false);
       } finally {
@@ -147,26 +154,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     init();
 
     // Listen for auth changes
+    const runDeferred = (task: () => Promise<void> | void) => {
+      window.setTimeout(() => {
+        if (!mounted) return;
+        Promise.resolve(task()).catch((error) => {
+          console.error("[auth-context] Deferred auth side effect failed:", error);
+        });
+      }, 0);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return;
 
         if (event === "SIGNED_IN" && session?.user) {
-          setUser(session.user);
-          await fetchProfile(session.user); // pass user directly no stale state
+          const authUser = session.user;
+          setUser(authUser);
           setIsLoading(false);
-          // Refresh Next.js server components so layout/headers update immediately
-          router.refresh();
+          if (isPasswordRecoveryRoute) {
+            setProfile(null);
+            return;
+          }
+          runDeferred(async () => {
+            await fetchProfile(authUser); // pass user directly no stale state
+            router.refresh();
+          });
         } else if (event === "SIGNED_OUT") {
           setUser(null);
           setProfile(null);
           setIsLoading(false);
-          router.refresh();
+          runDeferred(() => router.refresh());
         } else if (event === "TOKEN_REFRESHED" && session?.user) {
           setUser(session.user);
         } else if (event === "USER_UPDATED" && session?.user) {
-          setUser(session.user);
-          await fetchProfile(session.user);
+          const authUser = session.user;
+          setUser(authUser);
+          if (isPasswordRecoveryRoute) {
+            setProfile(null);
+            return;
+          }
+          runDeferred(() => fetchProfile(authUser));
         }
       }
     );
@@ -175,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase, fetchProfile, router]);
+  }, [supabase, fetchProfile, router, isPasswordRecoveryRoute]);
 
   // Referral Signup Attribution
   useEffect(() => {
@@ -231,7 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (data: { full_name?: string; email?: string }) => {
     if (isMockMode) {
       const updated = { ...mockProfiles[mockRole], ...data };
-      mockProfiles[mockRole] = updated;
+      setMockProfiles((prev) => ({ ...prev, [mockRole]: updated }));
       setProfile({ ...updated });
       toast.success("Profile updated");
       return;

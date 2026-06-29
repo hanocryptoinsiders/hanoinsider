@@ -8,7 +8,13 @@ export async function POST() {
     // Server-side signOut triggers setAll in cookie storage to clear auth cookies
     await supabase.auth.signOut();
 
-    return NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true });
+    response.cookies.set("hano_password_recovery", "", {
+      path: "/",
+      maxAge: 0,
+    });
+
+    return response;
   } catch (error: unknown) {
     console.error("[auth/signout] Server signout error:", error);
     return NextResponse.json(

@@ -34,6 +34,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isPasswordRecovery = request.cookies.get("hano_password_recovery")?.value === "1";
 
   // Pass through auth flow pages without any redirect logic.
   // The session cookie refresh above (getUser) is still needed so that
@@ -59,6 +60,21 @@ export async function middleware(request: NextRequest) {
     });
     return redirectResponse;
   };
+
+  if (isPasswordRecovery) {
+    if (user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/reset-password";
+      url.search = "";
+      url.hash = "";
+      return redirect(url);
+    }
+
+    supabaseResponse.cookies.set("hano_password_recovery", "", {
+      path: "/",
+      maxAge: 0,
+    });
+  }
 
   // Protect /admin routes
   if (pathname.startsWith("/admin")) {
@@ -107,7 +123,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect logged-in users with active subscriptions away from /login and /register
-  if ((pathname === "/login" || pathname === "/register") && user) {
+  if ((pathname === "/login" || pathname === "/register") && user && !isPasswordRecovery) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role, is_premium, subscription_status, subscription_current_period_end")
