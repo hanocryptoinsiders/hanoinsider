@@ -470,50 +470,64 @@
     isolation: isolate;
     margin-left: -32px;
     margin-right: -32px;
+    min-height: clamp(520px, 72vh, 820px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   @media (max-width: 640px) {
     .hero-section {
       padding: 3.75rem 20px 4rem;
       margin-left: -20px;
       margin-right: -20px;
+      min-height: clamp(460px, 68vh, 640px);
     }
   }
   .hero-bg-video {
     position: absolute;
     inset: 0;
     z-index: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 0;
     overflow: hidden;
     pointer-events: none;
     user-select: none;
+    background-color: #0a0612;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .hero-bg-video-el {
-    width: min(1040px, 88vw);
-    aspect-ratio: 1920 / 1080;
-    height: auto;
-    margin-right: clamp(-100px, -10vw, -40px);
-    transform: translateX(4%);
-    object-fit: contain;
-    object-position: center;
-    filter: blur(10px) saturate(1.35) brightness(1.15);
-    mix-blend-mode: screen;
-    opacity: 0.95;
-    flex-shrink: 0;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: none;
+    object-fit: cover;
+    object-position: center center;
+    opacity: 1;
   }
   .hero-bg-video-overlay {
     position: absolute;
     inset: 0;
     z-index: 1;
-    background: rgba(0, 0, 0, 0.55);
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.55)),
+      radial-gradient(ellipse at center, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.62) 100%);
   }
-  .hero-section .eyebrow { margin-bottom: 32px; }
+  .hero-section .eyebrow {
+    margin-top: 1.25rem;
+    margin-bottom: 32px;
+    justify-content: center;
+  }
   .hero-wide {
     position: relative;
     z-index: 1;
-    max-width: 680px;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   /*  MARKETING: HERO VIDEO  */
@@ -578,9 +592,10 @@
     font-weight: 700;
     letter-spacing: -.03em;
     line-height: 1.02;
-    margin: 0 0 28px;
+    margin: 0 auto 28px;
     max-width: 18ch;
     color: var(--fg);
+    text-align: center;
   }
   h1.hero-headline em {
     font-style: italic;
@@ -589,11 +604,12 @@
   }
   .hero-stand {
     font-family: var(--font-sans);
-    font-size: clamp(16px, 1.6vw, 18px);
-    line-height: 1.7;
+    font-size: clamp(14px, 1.35vw, 16px);
+    line-height: 1.65;
     color: var(--fg-2);
     max-width: 62ch;
-    margin: 0 0 36px;
+    margin: 0 auto 36px;
+    text-align: center;
     text-wrap: pretty;
     font-weight: 400;
   }
@@ -603,6 +619,7 @@
   .hero-trust-row {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 28px;
     flex-wrap: wrap;
     margin-bottom: 40px;
@@ -687,7 +704,7 @@
     opacity: .92;
   }
 
-  .cta-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .cta-row { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
   .cta-primary {
     display: inline-flex;
     align-items: center;
@@ -1428,6 +1445,9 @@
     background: linear-gradient(180deg, rgba(155, 130, 220, .06) 0%, var(--bg-2) 72%);
     overflow: hidden;
   }
+  .plan-card--regular {
+    overflow: hidden;
+  }
   .plan-card-bg {
     position: absolute;
     right: 0;
@@ -1438,6 +1458,10 @@
     z-index: 0;
     background: none;
   }
+  .plan-card-bg--top-right {
+    top: 0;
+    bottom: auto;
+  }
   .plan-card-bg-img {
     display: block;
     width: 100%;
@@ -1446,6 +1470,10 @@
     object-position: right bottom;
     opacity: .85;
     mix-blend-mode: screen;
+  }
+  .plan-card-bg-img--top-right {
+    object-position: right top;
+    opacity: 0.55;
   }
   .plan-card-inner {
     position: relative;
@@ -3223,23 +3251,31 @@
     background: linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent);
   }
   .landing-root .hero-wide {
-    max-width: 680px;
-    margin-left: 0;
+    max-width: 720px;
+    margin: 0 auto;
+    text-align: center;
+    align-items: center;
   }
   .landing-root .hero-bg-video-el {
-    width: min(780px, 88vw);
-    margin-right: clamp(-56px, -8vw, -12px);
-    transform: translateX(5%);
-    aspect-ratio: 1920 / 1080;
-    filter: blur(8px) saturate(1.4) brightness(1.2);
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: none;
+    object-fit: cover;
+    object-position: center center;
+    filter: none;
   }
   .landing-root .hero-bg-video-overlay {
-    background: rgba(0, 0, 0, 0.6);
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.65)),
+      radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.72) 100%);
   }
   .landing-root .hero-section .eyebrow {
+    margin-top: 1rem;
     margin-bottom: 24px;
     font-size: 10px;
     letter-spacing: 0.2em;
+    justify-content: center;
     animation: mHeroFadeUp 0.85s var(--ease-out) 0.05s both;
   }
   .landing-root h1.hero-headline {
@@ -3247,18 +3283,21 @@
     line-height: 1.06;
     letter-spacing: -0.03em;
     max-width: 18ch;
-    margin-bottom: 20px;
+    margin: 0 auto 20px;
+    text-align: center;
     animation: mHeroFadeUp 0.9s var(--ease-out) 0.14s both;
   }
   .landing-root .hero-stand {
-    font-size: 15px;
-    line-height: 1.65;
-    margin-bottom: 28px;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 auto 28px;
+    text-align: center;
     animation: mHeroFadeUp 0.9s var(--ease-out) 0.24s both;
   }
   .landing-root .hero-trust-row {
     gap: 16px;
     margin-bottom: 28px;
+    justify-content: center;
     animation: mHeroFadeUp 0.9s var(--ease-out) 0.3s both;
   }
   .landing-root .hero-trust-label { font-size: 12px; }
@@ -3538,9 +3577,18 @@
     height: 140px;
     opacity: 0.9;
   }
+  .landing-root .m-pricing-stack .plan-card-bg--top-right {
+    top: 0;
+    right: 0;
+    bottom: auto;
+  }
   .landing-root .m-pricing-stack .plan-card-bg-img {
     opacity: 0.75;
     mix-blend-mode: screen;
+  }
+  .landing-root .m-pricing-stack .plan-card-bg-img--top-right {
+    object-position: right top;
+    opacity: 0.5;
   }
   .landing-root .plan-cta {
     border-radius: 8px;
@@ -3668,7 +3716,7 @@
 @media (max-width: 480px) {
   .hero-section .eyebrow .bar { display: none; }
   .hero-section .eyebrow { gap: 8px; font-size: 10px; letter-spacing: .18em; }
-  .hero-stand { font-size: 15px; line-height: 1.65; }
+  .hero-stand { font-size: 14px; line-height: 1.6; }
   h1.hero-headline { font-size: clamp(34px, 9vw, 54px); line-height: 1.04; }
   .hero-trust-row { gap: 14px; }
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { BadgePercent, CircleCheck, LineChart, type LucideIcon } from "lucide-react";
 import { useSectionScroll } from "./useSectionScroll";
 
@@ -10,40 +9,21 @@ const trustSignals: { label: string; icon: LucideIcon }[] = [
   { label: "Member Savings", icon: BadgePercent },
 ];
 
-const HERO_CHART_VIDEO_SRC = "/assets/hanoinfrontend/Chart.mp4";
+const HERO_BG_SRC = "/assets/hanoinfrontend/heroBgMain.png";
 
 export function Hero() {
   const scrollToPricing = useSectionScroll("pricing");
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const tryPlay = () => {
-      video.muted = true;
-      void video.play().catch(() => undefined);
-    };
-
-    tryPlay();
-    video.addEventListener("canplay", tryPlay);
-    return () => video.removeEventListener("canplay", tryPlay);
-  }, []);
 
   return (
     <section className="hero-section">
       <div className="hero-bg-video" aria-hidden="true">
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          src={HERO_CHART_VIDEO_SRC}
+        <img
+          src={HERO_BG_SRC}
+          alt=""
           width={1920}
           height={1080}
           className="hero-bg-video-el"
+          fetchPriority="high"
         />
         <div className="hero-bg-video-overlay" />
       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -11,11 +12,18 @@ import {
   ShieldCheck,
   ArrowLeft,
   Lock,
+  AlertCircle,
 } from "lucide-react";
 import type { PlanConfig } from "@/lib/payments";
 import { isValidEmail } from "@/lib/payments";
+import type { CheckoutEligibilityStatus } from "@/lib/checkout-eligibility";
 
 type Step = "details" | "method";
+
+type EligibilityBlock = {
+  status: CheckoutEligibilityStatus;
+  message: string;
+};
 
 export function BuyModal({
   plan,
@@ -31,6 +39,8 @@ export function BuyModal({
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<{ firstName?: string; lastName?: string; email?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+  const [eligibilityBlock, setEligibilityBlock] = useState<EligibilityBlock | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -40,6 +50,8 @@ export function BuyModal({
       setStep("details");
       setErrors({});
       setIsSubmitting(false);
+      setIsCheckingEligibility(false);
+      setEligibilityBlock(null);
     }
   }, [plan]);
 
@@ -70,9 +82,48 @@ export function BuyModal({
     return Object.keys(next).length === 0;
   };
 
-  const handleContinue = (e: React.FormEvent) => {
+  const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateDetails()) setStep("method");
+    if (!validateDetails()) return;
+
+    setEligibilityBlock(null);
+    setIsCheckingEligibility(true);
+
+    try {
+      const res = await fetch("/api/checkout/check-eligibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.status === "invalid" || data.status === "error") {
+        toast.error("Could not verify this email. Please try again.");
+        return;
+      }
+
+      if (data.status === "active_subscriber") {
+        setEligibilityBlock({
+          status: "active_subscriber",
+          message: "This email already has an active membership. Log in to access your dashboard.",
+        });
+        return;
+      }
+
+      if (data.status === "pending_registration") {
+        setEligibilityBlock({
+          status: "pending_registration",
+          message: "You've already paid with this email. Create your account instead of paying again.",
+        });
+        return;
+      }
+
+      setStep("method");
+    } catch {
+      toast.error("Could not verify this email. Please try again.");
+    } finally {
+      setIsCheckingEligibility(false);
+    }
   };
 
   const handleNormalPayment = async () => {
@@ -89,7 +140,27 @@ export function BuyModal({
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error || "Failed to start checkout");
+      if (!res.ok || !data.url) {
+        if (data.code === "active_subscriber") {
+          setStep("details");
+          setEligibilityBlock({
+            status: "active_subscriber",
+            message: data.error || "This email already has an active membership. Log in instead.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        if (data.code === "pending_registration") {
+          setStep("details");
+          setEligibilityBlock({
+            status: "pending_registration",
+            message: data.error || "You've already paid with this email. Create your account instead.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        throw new Error(data.error || "Failed to start checkout");
+      }
       window.location.href = data.url;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong.");
@@ -160,12 +231,41 @@ export function BuyModal({
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setErrors((p) => ({ ...p, email: undefined }));
+                    setEligibilityBlock(null);
+                  }}
                   autoComplete="email"
                   className={`${inputBase} ${errors.email ? "border-red-500/70 focus:ring-red-500/30" : "border-white/10 focus:ring-white/20"}`}
                   placeholder="you@example.com"
                 />
                 {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email}</p>}
+                {eligibilityBlock && (
+                  <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-left">
+                    <p className="flex items-start gap-2 text-xs leading-relaxed text-amber-100/90">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      {eligibilityBlock.message}
+                    </p>
+                    <div className="mt-2.5">
+                      {eligibilityBlock.status === "active_subscriber" ? (
+                        <Link
+                          href="/login"
+                          className="inline-flex rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white/90"
+                        >
+                          Log in to dashboard
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/register?email=${encodeURIComponent(email.trim())}`}
+                          className="inline-flex rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-white/90"
+                        >
+                          Create your account
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-white/40">
                   <Lock className="mt-0.5 h-3 w-3 shrink-0" />
                   Use this email at checkout and when you create your account — they must match.
@@ -174,9 +274,16 @@ export function BuyModal({
 
               <button
                 type="submit"
-                className="mt-2 w-full rounded-xl bg-white py-3 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-[0.99]"
+                disabled={isCheckingEligibility}
+                className="mt-2 w-full rounded-xl bg-white py-3 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-[0.99] disabled:opacity-60"
               >
-                Continue to payment
+                {isCheckingEligibility ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Checking email…
+                  </span>
+                ) : (
+                  "Continue to payment"
+                )}
               </button>
             </form>
           ) : (

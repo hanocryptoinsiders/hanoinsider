@@ -101,25 +101,36 @@ export function Pricing({
       </div>
 
       <div className="pricing-grid m-pricing-stack" data-m-reveal data-m-reveal-delay="2">
-        <article className="plan-card">
-          <p className="plan-label">Regular Plan</p>
-          <div className="plan-price-row">
-            <span className="plan-amount">${REGULAR_MONTHLY_PRICE}</span>
-            <span className="plan-unit">/ month</span>
+        <article className="plan-card plan-card--regular">
+          <div className="plan-card-bg plan-card-bg--top-right" aria-hidden="true">
+            <Image
+              src="/assets/hanoinfrontend/regularBird.png"
+              alt=""
+              width={380}
+              height={380}
+              className="plan-card-bg-img plan-card-bg-img--top-right"
+            />
           </div>
-          <ul className="plan-features">
-            {features.map((f) => (
-              <li key={f}>{f}</li>
-            ))}
-            <li>Cancel anytime</li>
-          </ul>
-          <button
-            type="button"
-            onClick={() => onBuy("regular")}
-            className="plan-cta plan-cta--ghost"
-          >
-            Buy Now <span className="arr">→</span>
-          </button>
+          <div className="plan-card-inner">
+            <p className="plan-label">Regular Plan</p>
+            <div className="plan-price-row">
+              <span className="plan-amount">${REGULAR_MONTHLY_PRICE}</span>
+              <span className="plan-unit">/ month</span>
+            </div>
+            <ul className="plan-features">
+              {features.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+              <li>Cancel anytime</li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => onBuy("regular")}
+              className="plan-cta plan-cta--ghost"
+            >
+              Buy Now <span className="arr">→</span>
+            </button>
+          </div>
         </article>
 
         <article className={`plan-card plan-card--featured plan-card--glow${soldOut ? " plan-card--sold-out" : ""}`}>

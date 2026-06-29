@@ -3,6 +3,7 @@ import { getSiteUrl } from "@/lib/site-url";
 import { getStripe, getStripePriceId } from "@/lib/stripe";
 import { PLANS, isPlanId, normalizeEmail, isValidEmail } from "@/lib/payments";
 import { getEarlyBirdAvailability } from "@/lib/early-bird";
+import { getCheckoutEligibility, checkoutEligibilityMessage } from "@/lib/checkout-eligibility";
 import { getServiceSupabase } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
@@ -39,6 +40,17 @@ export async function POST(request: Request) {
     }
 
     const supabase = getServiceSupabase();
+
+    const eligibility = await getCheckoutEligibility(supabase, email);
+    if (eligibility.status !== "can_checkout") {
+      return NextResponse.json(
+        {
+          error: checkoutEligibilityMessage(eligibility.status),
+          code: eligibility.status,
+        },
+        { status: 409 },
+      );
+    }
 
     if (planId === "early_bird") {
       const availability = await getEarlyBirdAvailability(supabase);

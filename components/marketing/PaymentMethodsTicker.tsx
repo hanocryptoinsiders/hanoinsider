@@ -9,7 +9,6 @@ const PAYMENT_LOGOS = [
   { src: "/paymentMethods/usdt.png", alt: "USDT" },
   { src: "/paymentMethods/visa.png", alt: "Visa" },
   { src: "/paymentMethods/usdc.png", alt: "USDC" },
-  { src: "/paymentMethods/mx.png", alt: "MX" },
 ] as const;
 
 const MIN_COPIES = 3;
