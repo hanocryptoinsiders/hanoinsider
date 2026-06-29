@@ -3,56 +3,26 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { LogoMark } from "@/components/LogoMark";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2, Eye, EyeOff, ShieldCheck, AlertTriangle, CheckCircle2, ArrowLeft } from "lucide-react";
+import {
+  Loader2,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowLeft,
+  Lock,
+} from "lucide-react";
 
 type PageState = "loading" | "ready" | "success" | "error";
 
-function clearRecoveryParams() {
-  window.history.replaceState(null, "", "/reset-password");
-}
-
-async function waitForHashSession(supabase: SupabaseClient) {
-  return new Promise<boolean>((resolve) => {
-    let settled = false;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (
-        !settled &&
-        session &&
-        (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "PASSWORD_RECOVERY")
-      ) {
-        settled = true;
-        subscription.unsubscribe();
-        resolve(true);
-      }
-    });
-
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!settled && user) {
-        settled = true;
-        subscription.unsubscribe();
-        resolve(true);
-      }
-    });
-
-    window.setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        subscription.unsubscribe();
-        resolve(false);
-      }
-    }, 4000);
-  });
-}
-
 export default function ResetPassword() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [pageState, setPageState] = useState<PageState>("loading");
+  const [loadingMessage, setLoadingMessage] = useState("Verifying reset link…");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -72,61 +42,125 @@ export default function ResetPassword() {
 
     const succeed = () => {
       if (cancelled) return;
-      clearRecoveryParams();
+      // Clean the URL of any token params so they cannot be replayed
+      window.history.replaceState(null, "", "/reset-password");
       setPageState("ready");
     };
 
     const establishSession = async () => {
+      const supabase = createClient();
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const tokenHash = params.get("token_hash");
       const type = params.get("type");
-      const hasHashTokens = window.location.hash.includes("access_token");
+      const hasHashTokens =
+        typeof window !== "undefined" && window.location.hash.includes("access_token");
 
+      // ── Branch 1: token_hash (PKCE email link) ────────────────────────────
+      // Arrives when the user is sent DIRECTLY here (not via /auth/callback).
+      // Verify the OTP once, consuming the token permanently.
       if (tokenHash && type === "recovery") {
+        setLoadingMessage("Verifying your reset link…");
         const { error } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
           type: "recovery",
         });
         if (cancelled) return;
         if (error) {
-          fail("This reset link is invalid or expired. Please request a new password reset.");
+          fail("This reset link is invalid or has already been used. Please request a new one.");
           return;
         }
         succeed();
         return;
       }
 
+      // ── Branch 2: PKCE authorization code ─────────────────────────────────
       if (code) {
+        setLoadingMessage("Completing verification…");
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (error) {
-          fail("This reset link is invalid or expired. Please request a new password reset.");
+          fail("This reset link is invalid or has already been used. Please request a new one.");
           return;
         }
         succeed();
         return;
       }
 
+      // ── Branch 3: Implicit / hash-based tokens ────────────────────────────
+      // Old-style Supabase links put tokens in the URL hash (#access_token=…).
       if (hasHashTokens) {
-        const hasSession = await waitForHashSession(supabase);
+        setLoadingMessage("Establishing secure session…");
+
+        const hasSession = await new Promise<boolean>((resolve) => {
+          let settled = false;
+          let unsub: (() => void) | undefined;
+
+          // First, set up the auth state listener
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+              if (
+                !settled &&
+                session &&
+                (event === "INITIAL_SESSION" ||
+                  event === "SIGNED_IN" ||
+                  event === "PASSWORD_RECOVERY")
+              ) {
+                settled = true;
+                clearTimeout(timer);
+                subscription.unsubscribe();
+                resolve(true);
+              }
+            }
+          );
+          unsub = () => subscription.unsubscribe();
+
+          // Timeout with a final getUser() check (bumped 4s → 6s for slow connections)
+          const timer = window.setTimeout(() => {
+            if (!settled) {
+              settled = true;
+              unsub?.();
+              supabase.auth.getUser().then(({ data: { user } }) => {
+                resolve(!!user);
+              });
+            }
+          }, 6000);
+
+          // Also check immediately — the token might already be parsed
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!settled && user) {
+              settled = true;
+              clearTimeout(timer);
+              unsub?.();
+              resolve(true);
+            }
+          });
+        });
+
         if (cancelled) return;
         if (hasSession) {
           succeed();
           return;
         }
-        fail("This reset link is invalid or expired. Please request a new password reset.");
+        fail("This reset link is invalid or has expired. Please request a new password reset.");
         return;
       }
 
+      // ── Branch 4: No token params — session already established by /auth/callback ──
+      // The most common flow: /auth/callback consumed the token, set the session
+      // cookie, and redirected here with a clean URL. Simply trust getUser().
+      setLoadingMessage("Loading your session…");
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled) return;
+
       if (user) {
-        setPageState("ready");
+        succeed();
         return;
       }
 
-      fail("This reset link is invalid or expired. Please request a new password reset.");
+      fail(
+        "Your reset session could not be found. The link may have expired or already been used. Please request a new password reset."
+      );
     };
 
     void establishSession();
@@ -134,9 +168,10 @@ export default function ResetPassword() {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Password strength
+  // ── Password strength meter ───────────────────────────────────────────────
   const passwordStrength = (() => {
     if (!password) return 0;
     let score = 0;
@@ -148,22 +183,31 @@ export default function ResetPassword() {
     return score;
   })();
 
-  const strengthLabel = ["", "Weak", "Fair", "Good", "Strong", "Very strong"][passwordStrength] || "";
-  const strengthColor = ["", "bg-red-500", "bg-orange-400", "bg-yellow-400", "bg-emerald-500", "bg-emerald-400"][passwordStrength] || "bg-border";
+  const strengthLabel =
+    ["", "Weak", "Fair", "Good", "Strong", "Very strong"][passwordStrength] || "";
+  const strengthColor = [
+    "",
+    "bg-red-500",
+    "bg-orange-400",
+    "bg-yellow-400",
+    "bg-emerald-500",
+    "bg-emerald-400",
+  ][passwordStrength] || "bg-border";
 
-  // Validate
+  // ── Form validation ───────────────────────────────────────────────────────
   const validate = (): boolean => {
     const errors: { password?: string; confirm?: string } = {};
     if (!password) errors.password = "Password is required";
     else if (password.length < 8) errors.password = "Password must be at least 8 characters";
-    else if (passwordStrength < 2) errors.password = "Password is too weak. Add numbers or symbols.";
+    else if (passwordStrength < 2)
+      errors.password = "Password is too weak. Add numbers or symbols.";
     if (!confirmPassword) errors.confirm = "Please confirm your new password";
     else if (password !== confirmPassword) errors.confirm = "Passwords do not match";
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // Submit new password
+  // ── Submit new password ───────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -171,13 +215,15 @@ export default function ResetPassword() {
     setIsSubmitting(true);
     setFieldErrors({});
 
+    const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password });
 
-    setIsSubmitting(false);
-
     if (error) {
+      setIsSubmitting(false);
       if (error.message.toLowerCase().includes("same password")) {
-        setFieldErrors({ password: "New password must be different from your current password." });
+        setFieldErrors({
+          password: "New password must be different from your current password.",
+        });
       } else if (error.message.toLowerCase().includes("weak")) {
         setFieldErrors({ password: error.message });
       } else {
@@ -187,19 +233,24 @@ export default function ResetPassword() {
       return;
     }
 
+    // Show success UI FIRST — then sign out fire-and-forget to avoid racing
     setPageState("success");
-    // Sign out so user logs in fresh with new password
-    await supabase.auth.signOut();
+    supabase.auth.signOut().catch(() => {/* ignore */});
     setTimeout(() => router.replace("/login?reset=true"), 2500);
   };
 
-  // Loading skeleton
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (pageState === "loading") {
     return (
       <div className="min-h-screen bg-noise flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Verifying reset link…</p>
+        <div className="flex flex-col items-center gap-4 text-center px-4">
+          <div className="relative">
+            <div className="h-14 w-14 rounded-full bg-foreground/5 border border-border/60 flex items-center justify-center">
+              <Lock className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground absolute -bottom-1 -right-1" />
+          </div>
+          <p className="text-sm text-muted-foreground">{loadingMessage}</p>
         </div>
       </div>
     );
@@ -215,10 +266,12 @@ export default function ResetPassword() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 mb-8 w-fit group">
             <LogoMark size={32} />
-            <span className="font-display text-xl tracking-wider group-hover:opacity-80 transition-opacity">Hano Insiders</span>
+            <span className="font-display text-xl tracking-wider group-hover:opacity-80 transition-opacity">
+              Hano Insiders
+            </span>
           </Link>
 
-          {/* Success State */}
+          {/* ── Success State ─────────────────────────────────────────── */}
           {pageState === "success" && (
             <div className="text-center py-4">
               <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5">
@@ -239,7 +292,7 @@ export default function ResetPassword() {
             </div>
           )}
 
-          {/* Error State */}
+          {/* ── Error State ───────────────────────────────────────────── */}
           {pageState === "error" && (
             <div className="text-center py-4">
               <div className="h-16 w-16 rounded-full bg-destructive/10 border border-destructive/30 flex items-center justify-center mx-auto mb-5">
@@ -263,7 +316,7 @@ export default function ResetPassword() {
             </div>
           )}
 
-          {/* Reset Form */}
+          {/* ── Reset Form ────────────────────────────────────────────── */}
           {pageState === "ready" && (
             <>
               <div className="mb-6">
@@ -276,7 +329,10 @@ export default function ResetPassword() {
               <form onSubmit={handleSubmit} noValidate className="space-y-4">
                 {/* New password */}
                 <div>
-                  <label htmlFor="rp-password" className="text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="rp-password"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
                     New password
                   </label>
                   <div className="relative mt-1.5">
@@ -284,8 +340,12 @@ export default function ResetPassword() {
                       id="rp-password"
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: undefined })); }}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setFieldErrors((p) => ({ ...p, password: undefined }));
+                      }}
                       autoComplete="new-password"
+                      autoFocus
                       className={`w-full rounded-lg border px-3 py-2.5 pr-10 text-sm bg-background/80 focus:outline-none focus:ring-2 transition ${
                         fieldErrors.password
                           ? "border-destructive focus:ring-destructive/30"
@@ -312,7 +372,9 @@ export default function ResetPassword() {
                         {[1, 2, 3, 4, 5].map((i) => (
                           <div
                             key={i}
-                            className={`flex-1 rounded-full transition-all duration-300 ${i <= passwordStrength ? strengthColor : "bg-border/40"}`}
+                            className={`flex-1 rounded-full transition-all duration-300 ${
+                              i <= passwordStrength ? strengthColor : "bg-border/40"
+                            }`}
                           />
                         ))}
                       </div>
@@ -325,7 +387,10 @@ export default function ResetPassword() {
 
                 {/* Confirm password */}
                 <div>
-                  <label htmlFor="rp-confirm" className="text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="rp-confirm"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
                     Confirm new password
                   </label>
                   <div className="relative mt-1.5">
@@ -333,7 +398,10 @@ export default function ResetPassword() {
                       id="rp-confirm"
                       type={showConfirm ? "text" : "password"}
                       value={confirmPassword}
-                      onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((p) => ({ ...p, confirm: undefined })); }}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        setFieldErrors((p) => ({ ...p, confirm: undefined }));
+                      }}
                       autoComplete="new-password"
                       className={`w-full rounded-lg border px-3 py-2.5 pr-10 text-sm bg-background/80 focus:outline-none focus:ring-2 transition ${
                         fieldErrors.confirm
@@ -348,7 +416,11 @@ export default function ResetPassword() {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
                       aria-label={showConfirm ? "Hide password" : "Show password"}
                     >
-                      {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showConfirm ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                   {fieldErrors.confirm && (
@@ -361,12 +433,19 @@ export default function ResetPassword() {
                   disabled={isSubmitting}
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground text-background py-3 text-sm font-semibold hover:bg-foreground/90 active:scale-[0.99] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_15px_-4px_rgba(255,255,255,0.2)]"
                 >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update password"}
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Update password"
+                  )}
                 </button>
               </form>
 
               <div className="mt-5 flex items-center justify-between">
-                <Link href="/login" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
+                <Link
+                  href="/login"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition"
+                >
                   <ArrowLeft className="h-3 w-3" />
                   Back to sign in
                 </Link>

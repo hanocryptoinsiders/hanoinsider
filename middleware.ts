@@ -35,8 +35,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Refresh auth cookies on password-reset flow too
-  if (pathname === "/reset-password") {
+  // Pass through auth flow pages without any redirect logic.
+  // The session cookie refresh above (getUser) is still needed so that
+  // Supabase can rotate the session token, but we must not redirect.
+  if (pathname === "/reset-password" || pathname.startsWith("/auth/")) {
     return supabaseResponse;
   }
 

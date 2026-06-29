@@ -7,7 +7,7 @@ import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
+import { Loader2, Eye, EyeOff, ShieldCheck, AlertCircle, ArrowLeft } from "lucide-react";
 import { getSiteUrl } from "@/lib/site-url";
 
 function LoginContent() {
@@ -112,7 +112,7 @@ function LoginContent() {
 
     setIsResetting(true);
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${getSiteUrl()}/reset-password`,
+      redirectTo: `${getSiteUrl()}/auth/callback?type=recovery`,
     });
     setIsResetting(false);
 
@@ -251,8 +251,9 @@ function LoginContent() {
             <>
               <button
                 onClick={() => { setShowForgot(false); setResetSent(false); }}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition mb-6"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition mb-6"
               >
+                <ArrowLeft className="h-3 w-3" />
                 Back to sign in
               </button>
 
