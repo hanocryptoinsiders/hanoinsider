@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
         hostname: '**',
       },
     ],
+    // Ensure crisp small logos on retina (nav ~38–41px → up to 128px asset).
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
 };
 

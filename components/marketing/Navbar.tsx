@@ -25,8 +25,8 @@ export function Navbar() {
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <Link href="/" style={{ display: "inline-flex", alignItems: "center", padding: "4px 0" }}>
-          <LogoMark size={32} />
+        <Link href="/" className="topbar-logo-link">
+          <LogoMark size={38} priority className="topbar-logo-mark" />
         </Link>
 
         <div className="topbar-actions">

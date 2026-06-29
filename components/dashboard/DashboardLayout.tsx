@@ -20,9 +20,10 @@ import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { TierProvider } from "@/lib/tier-context";
 import { useAuth } from "@/lib/auth-context";
 import { QuoteProvider } from "@/lib/quote-context";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { RouteProgress } from "@/components/navigation/route-progress";
 import { HanoWordmark } from "@/components/brand/HanoWordmark";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type NavItem = {
   to: string;
@@ -43,6 +44,13 @@ const memberNav: NavItem[] = [
   { to: "/dashboard/affiliate", icon: UserPlus, label: "Affiliate" },
   { to: "/dashboard/support", icon: Headphones, label: "Support" },
   { to: "/dashboard/settings", icon: Settings, label: "Settings" },
+];
+
+const mobilePrimaryNav: NavItem[] = [
+  { to: "/dashboard", icon: Home, label: "Home", exact: true },
+  { to: "/dashboard/market", icon: TrendingUp, label: "Market" },
+  { to: "/dashboard/insights", icon: Zap, label: "Insights" },
+  { to: "/dashboard/articles", icon: FileText, label: "Articles" },
 ];
 
 const PAGE_META: Record<string, { title: string; sub?: string }> = {
@@ -66,6 +74,113 @@ function getAccessLabel(role?: string | null, isPremium?: boolean) {
   return isPremium ? "Premium" : "Member";
 }
 
+function isNavItemActive(pathname: string, item: NavItem) {
+  return item.exact ? pathname === item.to : pathname.startsWith(item.to);
+}
+
+function MobileBottomNav({
+  onOpenMore,
+  moreActive,
+}: {
+  onOpenMore: () => void;
+  moreActive: boolean;
+}) {
+  const pathname = usePathname();
+
+  return (
+    <nav className="dash-bottom-nav md:hidden" aria-label="Primary">
+      {mobilePrimaryNav.map((item) => {
+        const Icon = item.icon;
+        const active = isNavItemActive(pathname, item);
+        return (
+          <Link
+            key={item.to}
+            href={item.to}
+            className={`dash-bottom-nav-item ${active ? "dash-bottom-nav-item--active" : ""}`}
+          >
+            <Icon className="dash-bottom-nav-icon" strokeWidth={1.75} />
+            <span className="dash-bottom-nav-label">{item.label}</span>
+          </Link>
+        );
+      })}
+      <button
+        type="button"
+        onClick={onOpenMore}
+        className={`dash-bottom-nav-item ${moreActive ? "dash-bottom-nav-item--active" : ""}`}
+        aria-label="More navigation"
+      >
+        <Menu className="dash-bottom-nav-icon" strokeWidth={1.75} />
+        <span className="dash-bottom-nav-label">More</span>
+      </button>
+    </nav>
+  );
+}
+
+function MobileMoreSheet({
+  open,
+  onOpenChange,
+  overflowItems,
+  onNavigate,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  overflowItems: NavItem[];
+  onNavigate: () => void;
+}) {
+  const pathname = usePathname();
+  const { role, isPremium, profile, user, signOut } = useAuth();
+  const hasMemberAura = role === "admin" || isPremium;
+  const accessLabel = getAccessLabel(role, isPremium);
+  const displayName = getDisplayName(profile?.full_name, user?.email);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="dash-more-sheet border-t border-[var(--border)] bg-[#0a0a0a] p-0">
+        <SheetTitle className="sr-only">More navigation</SheetTitle>
+        <div className="dash-more-sheet-handle" aria-hidden="true" />
+        <div className="border-b border-[var(--border)] px-5 py-4">
+          <div className={`dash-member-card ${hasMemberAura ? "dash-member-card--premium" : ""}`}>
+            <div className="flex items-center gap-3">
+              <ProfileAvatar
+                src={profile?.avatar_url || mascotAvatar}
+                alt={displayName}
+                className="h-10 w-10 shrink-0"
+                aura={hasMemberAura}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-[var(--fg)]">{displayName}</div>
+                <div className="font-mono-label text-[var(--accent-soft)]" style={{ marginTop: 4 }}>
+                  {accessLabel} access
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <nav className="max-h-[min(60vh,420px)] overflow-y-auto py-3">
+          <NavGroup
+            label="More"
+            items={overflowItems}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
+        </nav>
+        <div className="border-t border-[var(--border)] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate();
+              void signOut();
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-md border border-[var(--border-2)] px-4 py-3 text-sm text-[var(--fg-2)] transition-colors hover:border-[var(--accent-soft)] hover:text-[var(--fg)]"
+          >
+            <LogOut className="h-4 w-4" strokeWidth={1.5} />
+            Sign out
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 function getPageMeta(pathname: string) {
   if (PAGE_META[pathname]) return PAGE_META[pathname];
   if (pathname.startsWith("/dashboard/coins/")) {
@@ -121,7 +236,7 @@ function NavGroup({
       {!compact ? <p className="dash-nav-group-label">{label}</p> : null}
       {items.map((item) => {
         const Icon = item.icon;
-        const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+        const active = isNavItemActive(pathname, item);
         return (
           <Link
             key={item.to}
@@ -188,14 +303,20 @@ function SidebarContent({ onNavigate, compact = false }: { onNavigate?: () => vo
 
 function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   const { profile, role, signOut, user, isPremium } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const displayName = getDisplayName(profile?.full_name, user?.email);
   const accessLabel = getAccessLabel(role, isPremium);
   const hasMemberAura = role === "admin" || isPremium;
   const pageMeta = getPageMeta(pathname);
+
+  const adminNav: NavItem[] =
+    role === "admin" ? [{ to: "/admin", icon: Shield, label: "Admin Panel" }] : [];
+  const mobileOverflowNav = [...memberNav, ...adminNav];
+  const moreActive = mobileOverflowNav.some((item) => isNavItemActive(pathname, item));
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -209,6 +330,12 @@ function Shell({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [profileOpen]);
 
+  useEffect(() => {
+    if (!isMobile) {
+      setMoreOpen(false);
+    }
+  }, [isMobile]);
+
   return (
     <div className="dash-shell">
       <RouteProgress />
@@ -220,20 +347,9 @@ function Shell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="dash-header sticky top-0 z-20 px-5 py-4 md:px-8">
             <div className="mx-auto flex w-full max-w-[1240px] items-center gap-4">
-              <Sheet open={open} onOpenChange={setOpen}>
-                <SheetTrigger asChild>
-                  <button
-                    aria-label="Open menu"
-                    className="rounded border border-[var(--border-2)] p-2 text-[var(--fg-3)] transition-colors hover:border-[var(--accent-soft)] hover:text-[var(--fg)] md:hidden"
-                  >
-                    <Menu className="h-5 w-5" strokeWidth={1.5} />
-                  </button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[260px] border-r border-[var(--border)] bg-black p-0">
-                  <SheetTitle className="sr-only">Navigation</SheetTitle>
-                  <SidebarContent onNavigate={() => setOpen(false)} />
-                </SheetContent>
-              </Sheet>
+              <div className="shrink-0 md:hidden">
+                <HanoWordmark href="/dashboard" compact />
+              </div>
 
               <div className="min-w-0 flex-1">
                 <h1 className="dash-header-title">{pageMeta.title}</h1>
@@ -335,6 +451,18 @@ function Shell({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
+
+      {isMobile ? (
+        <>
+          <MobileBottomNav onOpenMore={() => setMoreOpen(true)} moreActive={moreActive} />
+          <MobileMoreSheet
+            open={moreOpen}
+            onOpenChange={setMoreOpen}
+            overflowItems={mobileOverflowNav}
+            onNavigate={() => setMoreOpen(false)}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

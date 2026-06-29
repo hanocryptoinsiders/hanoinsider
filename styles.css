@@ -318,6 +318,19 @@
     height: 64px;
     gap: 24px;
   }
+  .topbar-logo-link {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    line-height: 0;
+  }
+  .topbar-logo-mark {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.22),
+      0 4px 18px rgba(0, 0, 0, 0.45);
+    transform: scale(1.08);
+    transform-origin: left center;
+  }
   .topbar .logo-text {
     font-family: var(--font-mono);
     font-weight: 700;
@@ -400,6 +413,10 @@
       -webkit-backdrop-filter: none;
     }
     .topbar-inner { height: 56px; }
+    .topbar-logo-mark {
+      transform: scale(1);
+      transform-origin: left center;
+    }
     .topbar-logo-img { height: 26px; }
     .topbar-cta-btn { height: 34px; font-size: 12px; padding: 0 16px; }
     .topbar-action { font-size: 10px; letter-spacing: .14em; }
@@ -2344,6 +2361,10 @@
     background: var(--bg);
     color: var(--fg);
     --dash-topbar-height: calc(2rem + 1.15 * 22px + 4px + 13px * 1.4);
+    --dash-bottom-nav-height: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 768px) {
+    .dash-shell { --dash-bottom-nav-height: 0px; }
   }
   .dash-shell::before {
     content: '';
@@ -2454,6 +2475,98 @@
     padding: 2px 7px;
     border-radius: 3px;
     background: rgba(245, 158, 11, .06);
+  }
+
+  /* Mobile bottom tab bar — hidden on desktop (md+) */
+  @media (min-width: 768px) {
+    .dash-bottom-nav {
+      display: none !important;
+    }
+  }
+  @media (max-width: 767px) {
+    .dash-bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 45;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      align-items: stretch;
+      border-top: 1px solid var(--border);
+      background: rgba(0, 0, 0, .96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .dash-bottom-nav-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-height: 56px;
+      padding: 6px 4px 8px;
+      color: var(--fg-3);
+      transition: color .15s ease;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .dash-bottom-nav-item:hover {
+      color: var(--fg-2);
+    }
+    .dash-bottom-nav-item--active {
+      color: var(--fg);
+    }
+    .dash-bottom-nav-item--active::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 22%;
+      right: 22%;
+      height: 2px;
+      border-radius: 999px;
+      background: var(--fg);
+    }
+    .dash-bottom-nav-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .dash-bottom-nav-label {
+      font-family: var(--font-sans);
+      font-size: 10px;
+      font-weight: 500;
+      line-height: 1.1;
+      letter-spacing: 0.01em;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .dash-more-sheet {
+      max-height: min(85vh, 640px);
+      border-radius: 16px 16px 0 0;
+    }
+    .dash-more-sheet-handle {
+      width: 36px;
+      height: 4px;
+      margin: 10px auto 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+  }
+  @media (max-width: 767px) {
+    .dash-main {
+      padding-bottom: calc(28px + var(--dash-bottom-nav-height));
+      min-height: calc(100vh - var(--dash-topbar-height) - var(--dash-bottom-nav-height));
+    }
+    .dash-footer-bar {
+      margin-bottom: 4px;
+    }
   }
   .dash-header {
     border-bottom: 1px solid var(--border);
@@ -3179,6 +3292,10 @@
   .landing-root .topbar-inner {
     height: calc(56px + env(safe-area-inset-top));
     padding-top: env(safe-area-inset-top);
+  }
+  .landing-root .topbar-logo-mark {
+    transform: scale(1);
+    transform-origin: left center;
   }
   .landing-root .topbar-logo-img { height: 26px; }
   .landing-root .topbar-cta-btn {
