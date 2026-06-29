@@ -3418,17 +3418,17 @@
   }
   .landing-root .hero-logo-link {
     display: inline-flex;
-    margin-bottom: 22px;
+    margin-bottom: 28px;
     line-height: 0;
     animation: mHeroFadeUp 0.85s var(--ease-out) 0s both;
   }
   .landing-root .hero-logo-mark {
-    width: 104px !important;
-    height: 104px !important;
+    width: 168px !important;
+    height: 168px !important;
     box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.24),
-      0 12px 36px rgba(0, 0, 0, 0.55),
-      0 0 52px rgba(155, 130, 220, 0.22);
+      0 0 0 1px rgba(255, 255, 255, 0.28),
+      0 16px 44px rgba(0, 0, 0, 0.55),
+      0 0 68px rgba(155, 130, 220, 0.26);
   }
   .landing-root .hero-bg-video-el {
     inset: 0;
