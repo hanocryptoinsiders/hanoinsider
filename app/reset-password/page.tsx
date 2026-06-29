@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/LogoMark";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,6 +14,9 @@ import {
   ArrowLeft,
   Lock,
 } from "lucide-react";
+
+const LOGIN_AFTER_RESET_PATH = "/login?password_updated=true";
+const SIGNOUT_REDIRECT_PATH = `/api/auth/signout?next=${encodeURIComponent(LOGIN_AFTER_RESET_PATH)}`;
 
 /**
  * /reset-password
@@ -47,8 +49,6 @@ function clearPasswordRecoveryMarker() {
 }
 
 export default function ResetPassword() {
-  const router = useRouter();
-
   const [pageState, setPageState] = useState<PageState>("loading");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -172,18 +172,12 @@ export default function ResetPassword() {
       setPageState("success");
       clearPasswordRecoveryMarker();
 
-      await Promise.allSettled([
-        withTimeout(
-          fetch("/api/auth/signout", { method: "POST" }),
-          "Server sign-out timed out."
-        ),
-        withTimeout(
-          supabase.auth.signOut(),
-          "Browser sign-out timed out."
-        ),
-      ]);
-
-      router.replace("/login?password_updated=true");
+      supabase.auth.signOut().catch(() => {
+        /* server redirect below is the source of truth */
+      });
+      window.setTimeout(() => {
+        window.location.replace(SIGNOUT_REDIRECT_PATH);
+      }, 800);
     } catch (err) {
       console.error("[reset-password] Unexpected error:", err);
       setErrorMessage(
@@ -239,7 +233,7 @@ export default function ResetPassword() {
               </p>
               <div className="mt-6">
                 <Link
-                  href="/login"
+                  href={SIGNOUT_REDIRECT_PATH}
                   className="inline-flex w-full items-center justify-center rounded-xl bg-foreground text-background py-3 text-sm font-semibold hover:bg-foreground/90 transition"
                 >
                   Go to sign in
