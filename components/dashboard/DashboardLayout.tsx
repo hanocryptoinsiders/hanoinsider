@@ -98,7 +98,9 @@ function MobileBottomNav({
             href={item.to}
             className={`dash-bottom-nav-item ${active ? "dash-bottom-nav-item--active" : ""}`}
           >
-            <Icon className="dash-bottom-nav-icon" strokeWidth={1.75} />
+            <span className="dash-bottom-nav-icon-wrap">
+              <Icon className="dash-bottom-nav-icon" strokeWidth={active ? 2 : 1.5} />
+            </span>
             <span className="dash-bottom-nav-label">{item.label}</span>
           </Link>
         );
@@ -109,7 +111,9 @@ function MobileBottomNav({
         className={`dash-bottom-nav-item ${moreActive ? "dash-bottom-nav-item--active" : ""}`}
         aria-label="More navigation"
       >
-        <Menu className="dash-bottom-nav-icon" strokeWidth={1.75} />
+        <span className="dash-bottom-nav-icon-wrap">
+          <Menu className="dash-bottom-nav-icon" strokeWidth={moreActive ? 2 : 1.5} />
+        </span>
         <span className="dash-bottom-nav-label">More</span>
       </button>
     </nav>

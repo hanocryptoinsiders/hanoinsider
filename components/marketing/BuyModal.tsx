@@ -317,23 +317,26 @@ export function BuyModal({
                 <span className="text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/60">→</span>
               </button>
 
-              {/* Crypto payment — shown but not yet available */}
-              <button
-                type="button"
-                disabled
-                className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-4 text-left opacity-70"
+              {/* Crypto payment */}
+              <Link
+                href={`/pay/crypto?${new URLSearchParams({
+                  plan: plan.id,
+                  firstName: firstName.trim(),
+                  lastName: lastName.trim(),
+                  email: email.trim(),
+                }).toString()}`}
+                onClick={onClose}
+                className="group flex w-full items-center gap-3 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-4 text-left transition hover:border-white/30 hover:bg-white/[0.07]"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/5 text-white/50">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white">
                   <Bitcoin className="h-5 w-5" />
                 </span>
                 <span className="flex-1">
-                  <span className="block text-sm font-semibold text-white/70">Crypto payment</span>
-                  <span className="block text-xs text-white/35">USDT / USDC and more</span>
+                  <span className="block text-sm font-semibold text-white">Crypto payment</span>
+                  <span className="block text-xs text-white/45">USDT / USDC — manual verification</span>
                 </span>
-                <span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/40">
-                  Soon
-                </span>
-              </button>
+                <span className="text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/60">→</span>
+              </Link>
 
               <p className="flex items-center justify-center gap-1.5 pt-2 text-[11px] text-white/35">
                 <ShieldCheck className="h-3 w-3" /> Payments are processed securely by Stripe.

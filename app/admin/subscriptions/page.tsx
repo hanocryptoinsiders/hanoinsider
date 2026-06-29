@@ -8,8 +8,9 @@
 import { Suspense } from "react";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import AdminSubscriptionsClient from "./AdminSubscriptionsClient";
+import { AdminCryptoPaymentsSection } from "./AdminCryptoPaymentsSection";
 import { AdminOverviewSkeleton } from "@/components/loading/skeletons";
-import { fetchAdminSubscriptions, type SubscriptionRow } from "./actions";
+import { fetchAdminSubscriptions, fetchAdminCryptoPaymentsAction, type SubscriptionRow } from "./actions";
 
 export type { SubscriptionRow };
 
@@ -25,7 +26,10 @@ export default function AdminSubscriptions() {
 }
 
 async function SubscriptionsDataFetcher() {
-  const { rows, error } = await fetchAdminSubscriptions();
+  const [{ rows, error }, cryptoPayments] = await Promise.all([
+    fetchAdminSubscriptions(),
+    fetchAdminCryptoPaymentsAction(),
+  ]);
 
   const activeRows = rows.filter((r) => r.status === "active" || r.status === "paid");
   const monthlyActive = activeRows.filter((r) => r.plan_type === "monthly");
@@ -70,6 +74,7 @@ async function SubscriptionsDataFetcher() {
         ))}
       </div>
       <AdminSubscriptionsClient rows={rows} />
+      <AdminCryptoPaymentsSection payments={cryptoPayments} />
     </>
   );
 }

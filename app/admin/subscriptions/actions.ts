@@ -4,6 +4,13 @@ import { requireAdmin, getCurrentProfile } from "@/lib/auth";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import {
+  fetchAdminCryptoPayments,
+  approveCryptoPayment,
+  rejectCryptoPayment,
+  getSignedProofUrl,
+} from "@/lib/crypto-payment-service";
+import type { ManualCryptoPaymentRow } from "@/lib/crypto-payments";
 
 export type SubscriptionRow = {
   id: string;
@@ -93,7 +100,7 @@ export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResul
   const { data: paidCustomers, error: paidError } = await supabase
     .from("paid_customers")
     .select(
-      "id, email, first_name, last_name, selected_plan, stripe_customer_id, stripe_subscription_id, payment_status, subscription_status, subscription_current_period_end, paid_at, created_at, has_registered, user_id",
+      "id, email, first_name, last_name, selected_plan, stripe_customer_id, stripe_subscription_id, payment_status, subscription_status, subscription_current_period_end, paid_at, created_at, has_registered, user_id, payment_provider",
     )
     .order("paid_at", { ascending: false, nullsFirst: false })
     .limit(200);
@@ -116,7 +123,7 @@ export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResul
       rows.push({
         id: p.id,
         user_id: p.user_id,
-        provider: "stripe",
+        provider: p.payment_provider === "manual_crypto" ? "manual_crypto" : "stripe",
         provider_subscription_id: p.stripe_subscription_id,
         provider_customer_id: p.stripe_customer_id,
         plan_type: p.selected_plan,
@@ -127,7 +134,7 @@ export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResul
         user_email: p.email,
         user_name: [p.first_name, p.last_name].filter(Boolean).join(" ") || null,
         is_premium: p.payment_status === "paid" && status === "active",
-        premium_source: "stripe",
+        premium_source: p.payment_provider === "manual_crypto" ? "manual" : "stripe",
         record_source: "paid_customer",
       });
       if (emailKey) seenEmails.add(emailKey);
@@ -200,7 +207,7 @@ export async function grantCryptoMembershipAction(targetUserId: string, termDays
       role: "premium",
       subscription_status: "active",
       subscription_plan: "regular",
-      premium_source: "crypto",
+      premium_source: "manual",
       subscription_current_period_end: periodEnd,
       cancel_at_period_end: false,
     })
@@ -244,4 +251,47 @@ export async function revokePremiumAction(targetUserId: string) {
   revalidatePath("/admin/subscriptions");
   revalidatePath("/admin/users");
   return { success: true };
+}
+
+export type CryptoPaymentAdminRow = ManualCryptoPaymentRow & {
+  proof_screenshot_url: string | null;
+};
+
+export async function fetchAdminCryptoPaymentsAction(): Promise<CryptoPaymentAdminRow[]> {
+  await requireAdmin();
+  const rows = await fetchAdminCryptoPayments();
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      proof_screenshot_url: row.proof_screenshot_path
+        ? await getSignedProofUrl(row.proof_screenshot_path)
+        : null,
+    })),
+  );
+}
+
+export async function approveCryptoPaymentAction(paymentId: string, adminNotes?: string | null) {
+  const admin = await getCurrentProfile();
+  if (!admin || admin.role !== "admin") {
+    return { success: false, error: "Unauthorized. Admin privileges required." };
+  }
+
+  const result = await approveCryptoPayment(paymentId, admin.id, adminNotes);
+  if (result.success) {
+    revalidatePath("/admin/subscriptions");
+  }
+  return result;
+}
+
+export async function rejectCryptoPaymentAction(paymentId: string, adminNotes?: string | null) {
+  const admin = await getCurrentProfile();
+  if (!admin || admin.role !== "admin") {
+    return { success: false, error: "Unauthorized. Admin privileges required." };
+  }
+
+  const result = await rejectCryptoPayment(paymentId, admin.id, adminNotes);
+  if (result.success) {
+    revalidatePath("/admin/subscriptions");
+  }
+  return result;
 }

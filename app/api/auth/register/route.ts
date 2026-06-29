@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { normalizeEmail, isValidEmail, planToRole } from "@/lib/payments";
+import { hasPendingCryptoPayment } from "@/lib/crypto-payment-service";
 
 export const runtime = "nodejs";
 
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     const { data: paid, error: paidError } = await supabase
       .from("paid_customers")
       .select(
-        "id, first_name, last_name, selected_plan, stripe_customer_id, payment_status, has_registered, user_id",
+        "id, first_name, last_name, selected_plan, stripe_customer_id, payment_status, has_registered, user_id, payment_provider",
       )
       .eq("email", email)
       .maybeSingle();
@@ -48,9 +49,18 @@ export async function POST(request: Request) {
     }
 
     if (!paid || paid.payment_status !== "paid") {
+      if (await hasPendingCryptoPayment(email)) {
+        return NextResponse.json(
+          {
+            error: "Your payment has not been verified yet. Please wait for admin approval or contact support.",
+            code: "pending_crypto_review",
+          },
+          { status: 403 },
+        );
+      }
       return NextResponse.json(
         { error: "Please use the same email address you used during payment.", code: "not_paid" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -96,6 +106,8 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const role = existingProfile?.role === "admin" ? "admin" : planToRole(paid.selected_plan);
+    const premiumSource =
+      paid.payment_provider === "manual_crypto" || !paid.stripe_customer_id ? "manual" : "stripe";
 
     const { error: profileError } = await supabase
       .from("profiles")
@@ -107,7 +119,7 @@ export async function POST(request: Request) {
         subscription_status: "active",
         subscription_plan: paid.selected_plan,
         stripe_customer_id: paid.stripe_customer_id,
-        premium_source: "stripe",
+        premium_source: premiumSource,
       })
       .eq("id", userId);
 

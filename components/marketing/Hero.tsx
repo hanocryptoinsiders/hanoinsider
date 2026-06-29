@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { BadgePercent, CircleCheck, LineChart, type LucideIcon } from "lucide-react";
+import { LogoMark } from "@/components/LogoMark";
 import { useSectionScroll } from "./useSectionScroll";
 
 const trustSignals: { label: string; icon: LucideIcon }[] = [
@@ -29,6 +31,10 @@ export function Hero() {
       </div>
 
       <div className="hero-wide">
+        <Link href="/" className="hero-logo-link" aria-label="Hano Insiders home">
+          <LogoMark size={56} priority className="hero-logo-mark" />
+        </Link>
+
         <div className="eyebrow">
           <span className="pulse-dot" />
           <span className="acc">Welcome to Hano Insiders</span>

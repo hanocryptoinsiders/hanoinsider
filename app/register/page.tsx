@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, ShieldCheck, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 
-type Eligibility = "unknown" | "checking" | "eligible" | "not_paid" | "already_registered";
+type Eligibility = "unknown" | "checking" | "eligible" | "not_paid" | "pending_crypto_review" | "already_registered";
 
 function RegisterContent() {
   const router = useRouter();
@@ -55,6 +55,7 @@ function RegisterContent() {
         const data = await res.json();
         if (data.status === "eligible") setEligibility("eligible");
         else if (data.status === "already_registered") setEligibility("already_registered");
+        else if (data.status === "pending_crypto_review") setEligibility("pending_crypto_review");
         else if (data.status === "not_paid") setEligibility("not_paid");
         else setEligibility("unknown");
       } catch {
@@ -107,6 +108,9 @@ function RegisterContent() {
         if (data.code === "not_paid") {
           setEligibility("not_paid");
           setFormError("Please use the same email address you used during payment.");
+        } else if (data.code === "pending_crypto_review") {
+          setEligibility("pending_crypto_review");
+          setFormError("Your payment has not been verified yet. Please wait for admin approval or contact support.");
         } else if (data.code === "already_registered") {
           setEligibility("already_registered");
           setFormError("This paid email already has an account. Please log in instead.");
@@ -207,6 +211,9 @@ function RegisterContent() {
               {!fieldErrors.email && eligibility === "not_paid" && (
                 <p className="mt-1 text-xs text-destructive">Please use the same email address you used during payment.</p>
               )}
+              {!fieldErrors.email && eligibility === "pending_crypto_review" && (
+                <p className="mt-1 text-xs text-amber-400">Your payment has not been verified yet. Please wait for admin approval or contact support.</p>
+              )}
               {!fieldErrors.email && eligibility === "eligible" && (
                 <p className="mt-1 text-xs text-emerald-400">Payment verified — you&apos;re good to go.</p>
               )}
@@ -273,7 +280,7 @@ function RegisterContent() {
 
             <button
               type="submit"
-              disabled={isSubmitting || eligibility === "already_registered"}
+              disabled={isSubmitting || eligibility === "already_registered" || eligibility === "pending_crypto_review"}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground text-background py-3 text-sm font-semibold hover:bg-foreground/90 active:scale-[0.99] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_15px_-4px_rgba(255,255,255,0.2)]"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account & enter dashboard"}

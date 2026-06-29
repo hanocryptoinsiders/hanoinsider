@@ -33,6 +33,16 @@ export const PLANS: Record<PlanId, PlanConfig> = {
   },
 };
 
+/** USD amounts used for manual crypto payments (server-controlled). */
+export const PLAN_AMOUNTS_USD: Record<PlanId, number> = {
+  regular: 79,
+  early_bird: 49,
+};
+
+export function getPlanAmountUsd(planId: PlanId): number {
+  return PLAN_AMOUNTS_USD[planId];
+}
+
 export function isPlanId(value: unknown): value is PlanId {
   return value === "regular" || value === "early_bird";
 }
