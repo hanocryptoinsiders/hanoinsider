@@ -114,29 +114,43 @@ export default function ResetPassword() {
     setIsSubmitting(true);
     setFieldErrors({});
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password });
 
-    if (error) {
-      setIsSubmitting(false);
-      if (error.message.toLowerCase().includes("same password")) {
-        setFieldErrors({
-          password: "New password must be different from your current password.",
-        });
-      } else if (error.message.toLowerCase().includes("weak")) {
-        setFieldErrors({ password: error.message });
-      } else {
-        console.error("[reset-password] updateUser failed:", error.message);
-        setErrorMessage(error.message || "Failed to update password. Please try again.");
-        setPageState("error");
+      if (error) {
+        if (error.message.toLowerCase().includes("same password")) {
+          setFieldErrors({
+            password: "New password must be different from your current password.",
+          });
+        } else if (error.message.toLowerCase().includes("weak")) {
+          setFieldErrors({ password: error.message });
+        } else {
+          console.error("[reset-password] updateUser failed:", error.message);
+          setErrorMessage(error.message || "Failed to update password. Please try again.");
+          setPageState("error");
+        }
+        return;
       }
-      return;
-    }
 
-    // Password updated successfully — show success, sign out, redirect
-    setPageState("success");
-    await supabase.auth.signOut();
-    setTimeout(() => router.replace("/login?password_updated=true"), 2500);
+      // Password updated successfully
+      console.log("[reset-password] ✅ Password updated successfully");
+
+      // Show success UI immediately, then sign out
+      setPageState("success");
+
+      // Sign out fire-and-forget so AuthProvider's onAuthStateChange
+      // (which calls router.refresh()) cannot block or crash this handler.
+      supabase.auth.signOut().catch(() => {/* ignore */});
+
+      setTimeout(() => router.replace("/login?password_updated=true"), 2500);
+    } catch (err) {
+      console.error("[reset-password] Unexpected error:", err);
+      setErrorMessage("Something went wrong. Please try again.");
+      setPageState("error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // ── Loading state ─────────────────────────────────────────────────────────
