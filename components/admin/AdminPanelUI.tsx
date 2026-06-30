@@ -14,6 +14,7 @@ import {
   Bell,
   Quote,
   Mail,
+  LifeBuoy,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { QuoteProvider } from "@/lib/quote-context";
@@ -36,6 +37,7 @@ const operationsNav: NavItem[] = [
 
 const platformNav: NavItem[] = [
   { to: "/admin/notifications", icon: Bell, label: "Notifications" },
+  { to: "/admin/support", icon: LifeBuoy, label: "Support tickets" },
   { to: "/admin/emails", icon: Mail, label: "Community email" },
   { to: "/admin/affiliates", icon: Gift, label: "Affiliates" },
 ];
@@ -50,6 +52,7 @@ const PAGE_META: Record<string, { title: string; sub?: string }> = {
   "/admin/content": { title: "Content", sub: "Insights, articles, and media." },
   "/admin/subscriptions": { title: "Subscriptions", sub: "Billing and plan status." },
   "/admin/notifications": { title: "Notifications", sub: "Broadcast alerts to members." },
+  "/admin/support": { title: "Support tickets", sub: "Member help requests and replies." },
   "/admin/emails": { title: "Community email", sub: "Send updates to paid subscribers." },
   "/admin/affiliates": { title: "Affiliates", sub: "Referral partners and payouts." },
   "/admin/quote": { title: "Desk quote", sub: "Dashboard hero voice and mascot." },

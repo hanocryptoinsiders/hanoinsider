@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Loader2, Mail, MessageSquare } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, Loader2, Mail, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import { useAuth } from "@/lib/auth-context";
@@ -17,6 +17,16 @@ type Ticket = {
   admin_response: string | null;
 };
 
+function formatTicketDate(iso: string) {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function SupportPage() {
   const { user } = useAuth();
   const [subject, setSubject] = useState("Subscription & Billing");
@@ -25,6 +35,7 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
   const supportEmail = getSupportEmail();
 
   async function loadTickets() {
@@ -55,6 +66,7 @@ export default function SupportPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not create ticket");
       setTickets((prev) => [data.ticket, ...prev]);
+      setExpandedTicketId(data.ticket.id);
       setMessage("");
       toast.success("Support ticket created.");
     } catch (err) {
@@ -120,16 +132,60 @@ export default function SupportPage() {
         <div className="mt-4 grid gap-3">
           {loading && <p className="text-sm text-muted-foreground">Loading tickets...</p>}
           {!loading && tickets.length === 0 && <p className="text-sm text-muted-foreground">No tickets yet.</p>}
-          {tickets.map((ticket) => (
-            <article key={ticket.id} className="rounded-lg border border-white/10 bg-black/20 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="font-semibold">{ticket.subject}</h3>
-                <span className="rounded-md border border-violet-300/20 bg-violet-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-violet-100">{ticket.status}</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{ticket.message}</p>
-              {ticket.admin_response && <p className="mt-3 rounded-lg bg-white/5 p-3 text-sm">Admin response: {ticket.admin_response}</p>}
-            </article>
-          ))}
+          {tickets.map((ticket) => {
+            const isExpanded = expandedTicketId === ticket.id;
+            return (
+              <article key={ticket.id} className="rounded-lg border border-white/10 bg-black/20 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold">{ticket.subject}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatTicketDate(ticket.created_at)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md border border-violet-300/20 bg-violet-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-violet-100">
+                      {ticket.status}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedTicketId(isExpanded ? null : ticket.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/10"
+                    >
+                      {isExpanded ? (
+                        <>
+                          <ChevronUp className="h-3.5 w-3.5" />
+                          Close
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5" />
+                          Open
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {!isExpanded ? (
+                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{ticket.message}</p>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Your message</p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{ticket.message}</p>
+                    </div>
+                    {ticket.admin_response ? (
+                      <div className="rounded-lg border border-violet-300/20 bg-violet-400/10 p-3">
+                        <p className="text-[10px] uppercase tracking-wider text-violet-200/80">Admin response</p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-violet-50">{ticket.admin_response}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No admin response yet. We will reply here when your ticket is reviewed.</p>
+                    )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       </section>
     </>

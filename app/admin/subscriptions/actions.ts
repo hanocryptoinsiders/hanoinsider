@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAdmin, getCurrentProfile } from "@/lib/auth";
-import { getServiceSupabase } from "@/lib/supabase/service";
+import { getServiceSupabase, getServiceSupabaseSafe } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import {
@@ -37,7 +37,18 @@ export type FetchSubscriptionsResult = {
 
 export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResult> {
   await requireAdmin();
-  const supabase = getServiceSupabase();
+
+  try {
+    const service = getServiceSupabaseSafe();
+  if (service.error || !service.supabase) {
+    return {
+      rows: [],
+      error:
+        "Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing on the host. Add it in your deployment environment variables.",
+    };
+  }
+
+  const supabase = service.supabase;
 
   const rows: SubscriptionRow[] = [];
   const seenEmails = new Set<string>();
@@ -100,15 +111,38 @@ export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResul
   const { data: paidCustomers, error: paidError } = await supabase
     .from("paid_customers")
     .select(
-      "id, email, first_name, last_name, selected_plan, stripe_customer_id, stripe_subscription_id, payment_status, subscription_status, subscription_current_period_end, paid_at, created_at, has_registered, user_id, payment_provider",
+      "id, email, first_name, last_name, selected_plan, stripe_customer_id, stripe_subscription_id, payment_status, subscription_status, subscription_current_period_end, paid_at, created_at, has_registered, user_id, payment_provider, manual_crypto_payment_id",
     )
     .order("paid_at", { ascending: false, nullsFirst: false })
     .limit(200);
 
-  if (paidError) {
-    console.error("[admin/subscriptions] paid_customers fetch error:", paidError.message);
+  let paidRows = paidCustomers;
+  let paidFetchError = paidError;
+
+  // Production DBs that have not run migration 021 yet omit payment_provider.
+  if (paidFetchError?.message?.includes("payment_provider")) {
+    const fallback = await supabase
+      .from("paid_customers")
+      .select(
+        "id, email, first_name, last_name, selected_plan, stripe_customer_id, stripe_subscription_id, payment_status, subscription_status, subscription_current_period_end, paid_at, created_at, has_registered, user_id",
+      )
+      .order("paid_at", { ascending: false, nullsFirst: false })
+      .limit(200);
+    paidRows = fallback.data;
+    paidFetchError = fallback.error;
+  }
+
+  if (paidFetchError) {
+    console.error("[admin/subscriptions] paid_customers fetch error:", paidFetchError.message);
   } else {
-    for (const p of paidCustomers ?? []) {
+    for (const p of paidRows ?? []) {
+      const paymentProvider =
+        "payment_provider" in p && p.payment_provider
+          ? (p.payment_provider as string)
+          : p.stripe_customer_id
+            ? "stripe"
+            : "manual_crypto";
+
       const emailKey = p.email?.toLowerCase();
       if (emailKey && seenEmails.has(emailKey)) continue;
       if (p.stripe_subscription_id && seenSubIds.has(p.stripe_subscription_id)) continue;
@@ -123,7 +157,7 @@ export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResul
       rows.push({
         id: p.id,
         user_id: p.user_id,
-        provider: p.payment_provider === "manual_crypto" ? "manual_crypto" : "stripe",
+        provider: paymentProvider === "manual_crypto" ? "manual_crypto" : "stripe",
         provider_subscription_id: p.stripe_subscription_id,
         provider_customer_id: p.stripe_customer_id,
         plan_type: p.selected_plan,
@@ -134,7 +168,7 @@ export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResul
         user_email: p.email,
         user_name: [p.first_name, p.last_name].filter(Boolean).join(" ") || null,
         is_premium: p.payment_status === "paid" && status === "active",
-        premium_source: p.payment_provider === "manual_crypto" ? "manual" : "stripe",
+        premium_source: paymentProvider === "manual_crypto" ? "manual" : "stripe",
         record_source: "paid_customer",
       });
       if (emailKey) seenEmails.add(emailKey);
@@ -143,6 +177,13 @@ export async function fetchAdminSubscriptions(): Promise<FetchSubscriptionsResul
 
   rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   return { rows };
+  } catch (error) {
+    console.error("[admin/subscriptions] fetchAdminSubscriptions:", error);
+    return {
+      rows: [],
+      error: error instanceof Error ? error.message : "Failed to load subscription data",
+    };
+  }
 }
 
 /**
@@ -257,17 +298,41 @@ export type CryptoPaymentAdminRow = ManualCryptoPaymentRow & {
   proof_screenshot_url: string | null;
 };
 
-export async function fetchAdminCryptoPaymentsAction(): Promise<CryptoPaymentAdminRow[]> {
+export type FetchCryptoPaymentsResult = {
+  payments: CryptoPaymentAdminRow[];
+  error?: string;
+};
+
+export async function fetchAdminCryptoPaymentsAction(): Promise<FetchCryptoPaymentsResult> {
   await requireAdmin();
-  const rows = await fetchAdminCryptoPayments();
-  return Promise.all(
-    rows.map(async (row) => ({
-      ...row,
-      proof_screenshot_url: row.proof_screenshot_path
-        ? await getSignedProofUrl(row.proof_screenshot_path)
-        : null,
-    })),
-  );
+
+  try {
+    const service = getServiceSupabaseSafe();
+    if (service.error || !service.supabase) {
+      return {
+        payments: [],
+        error:
+          "Crypto payments unavailable: SUPABASE_SERVICE_ROLE_KEY is missing on the host.",
+      };
+    }
+
+    const rows = await fetchAdminCryptoPayments();
+    const payments = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        proof_screenshot_url: row.proof_screenshot_path
+          ? await getSignedProofUrl(row.proof_screenshot_path)
+          : null,
+      })),
+    );
+    return { payments };
+  } catch (error) {
+    console.error("[admin/subscriptions] fetchAdminCryptoPaymentsAction:", error);
+    return {
+      payments: [],
+      error: error instanceof Error ? error.message : "Failed to load crypto payments",
+    };
+  }
 }
 
 export async function approveCryptoPaymentAction(paymentId: string, adminNotes?: string | null) {

@@ -14,3 +14,15 @@ export function getServiceSupabase(): SupabaseClient {
   }
   return createClient(url, key, { auth: { persistSession: false } });
 }
+
+/** Non-throwing variant for server pages that should degrade gracefully in production. */
+export function getServiceSupabaseSafe():
+  | { supabase: SupabaseClient; error?: undefined }
+  | { supabase?: undefined; error: string } {
+  try {
+    return { supabase: getServiceSupabase() };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Missing Supabase service role env vars";
+    return { error: message };
+  }
+}

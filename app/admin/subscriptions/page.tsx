@@ -26,10 +26,13 @@ export default function AdminSubscriptions() {
 }
 
 async function SubscriptionsDataFetcher() {
-  const [{ rows, error }, cryptoPayments] = await Promise.all([
+  const [{ rows, error }, cryptoResult] = await Promise.all([
     fetchAdminSubscriptions(),
     fetchAdminCryptoPaymentsAction(),
   ]);
+
+  const cryptoPayments = cryptoResult.payments;
+  const cryptoError = cryptoResult.error;
 
   const activeRows = rows.filter((r) => r.status === "active" || r.status === "paid");
   const monthlyActive = activeRows.filter((r) => r.plan_type === "monthly");
@@ -64,6 +67,11 @@ async function SubscriptionsDataFetcher() {
 
   return (
     <>
+      {cryptoError ? (
+        <div className="panel mb-5 p-4 text-sm text-amber-200/90 border border-amber-500/30 bg-amber-500/10">
+          Crypto payments section unavailable: {cryptoError}
+        </div>
+      ) : null}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-5">
         {analytics.map((s) => (
           <div key={s.l} className="panel p-6">
