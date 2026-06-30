@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { normalizeEmail, isValidEmail, planToRole } from "@/lib/payments";
 import { hasPendingCryptoPayment } from "@/lib/crypto-payment-service";
 
 export const runtime = "nodejs";
+
+function isDev() {
+  return process.env.NODE_ENV === "development";
+}
 
 /**
  * Server-side registration for paid customers.
@@ -32,7 +37,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Password must be at least 6 characters.", code: "weak_password" }, { status: 400 });
     }
 
-    const supabase = getServiceSupabase();
+    let supabase;
+    try {
+      supabase = getServiceSupabase();
+    } catch (configError) {
+      console.error("[auth/register] missing service configuration:", configError);
+      return NextResponse.json(
+        {
+          error: "Registration is temporarily unavailable. Please contact support.",
+          code: "server_config",
+          ...(isDev() && {
+            detail: configError instanceof Error ? configError.message : "Missing Supabase service role env vars",
+          }),
+        },
+        { status: 500 },
+      );
+    }
 
     // 1. Verify the email has a confirmed paid record.
     const { data: paid, error: paidError } = await supabase
@@ -45,7 +65,14 @@ export async function POST(request: Request) {
 
     if (paidError) {
       console.error("[auth/register] paid lookup error:", paidError);
-      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "Something went wrong. Please try again.",
+          code: "paid_lookup_failed",
+          ...(isDev() && { detail: paidError.message }),
+        },
+        { status: 500 },
+      );
     }
 
     if (!paid || paid.payment_status !== "paid") {
@@ -158,10 +185,31 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ success: true });
+    // 7. Establish a browser session server-side so the client does not need a second sign-in hop.
+    let sessionEstablished = false;
+    try {
+      const authClient = await createClient();
+      const { error: signInError } = await authClient.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        console.error("[auth/register] post-create sign-in error:", signInError);
+      } else {
+        sessionEstablished = true;
+      }
+    } catch (signInError) {
+      console.error("[auth/register] post-create sign-in exception:", signInError);
+    }
+
+    return NextResponse.json({ success: true, sessionEstablished });
   } catch (error) {
     console.error("[auth/register]", error);
     const message = error instanceof Error ? error.message : "Registration failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: isDev() ? message : "Something went wrong. Please try again.",
+        code: "server_error",
+        ...(isDev() && { detail: message }),
+      },
+      { status: 500 },
+    );
   }
 }

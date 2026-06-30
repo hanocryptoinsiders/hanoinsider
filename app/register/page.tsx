@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, ShieldCheck, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { normalizeEmail } from "@/lib/payments";
 
 type Eligibility = "unknown" | "checking" | "eligible" | "not_paid" | "pending_crypto_review" | "already_registered";
 
@@ -95,14 +96,23 @@ function RegisterContent() {
     setFormError(null);
     if (!validate()) return;
 
+    const normalizedEmail = normalizeEmail(email);
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: normalizedEmail, password }),
       });
-      const data = await res.json();
+
+      let data: { error?: string; code?: string; success?: boolean; sessionEstablished?: boolean } = {};
+      try {
+        data = await res.json();
+      } catch {
+        setFormError("Registration failed. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
 
       if (!res.ok) {
         if (data.code === "not_paid") {
@@ -114,6 +124,8 @@ function RegisterContent() {
         } else if (data.code === "already_registered") {
           setEligibility("already_registered");
           setFormError("This paid email already has an account. Please log in instead.");
+        } else if (data.code === "server_config") {
+          setFormError("Registration is temporarily unavailable. Please contact support.");
         } else {
           setFormError(data.error || "Registration failed. Please try again.");
         }
@@ -121,20 +133,24 @@ function RegisterContent() {
         return;
       }
 
-      // Account created & confirmed server-side — sign in to start the session.
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-      if (signInError) {
-        toast.success("Account created! Please sign in.");
-        router.replace("/login");
-        return;
+      if (!data.sessionEstablished) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
+        if (signInError) {
+          toast.success("Account created! Please sign in with your new password.");
+          router.replace("/login");
+          return;
+        }
+      } else {
+        router.refresh();
       }
 
       toast.success("Welcome to Hano Insiders!");
       router.replace("/dashboard");
-    } catch {
+    } catch (error) {
+      console.error("[register] unexpected error:", error);
       setFormError("Something went wrong. Please try again.");
       setIsSubmitting(false);
     }
