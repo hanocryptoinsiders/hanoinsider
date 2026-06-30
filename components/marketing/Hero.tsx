@@ -11,7 +11,8 @@ const trustSignals: { label: string; icon: LucideIcon }[] = [
   { label: "Member Savings", icon: BadgePercent },
 ];
 
-const HERO_BG_SRC = "/assets/hanoinfrontend/heroBgMain.png";
+const HERO_BG_DESKTOP = "/assets/hanoinfrontend/heroBgMain.png";
+const HERO_BG_MOBILE = "/assets/hanoinfrontend/heroBgMainM.png";
 
 export function Hero() {
   const scrollToPricing = useSectionScroll("pricing");
@@ -19,14 +20,17 @@ export function Hero() {
   return (
     <section className="hero-section">
       <div className="hero-bg-video" aria-hidden="true">
-        <img
-          src={HERO_BG_SRC}
-          alt=""
-          width={1920}
-          height={1080}
-          className="hero-bg-video-el"
-          fetchPriority="high"
-        />
+        <picture>
+          <source media="(max-width: 767px)" srcSet={HERO_BG_MOBILE} />
+          <img
+            src={HERO_BG_DESKTOP}
+            alt=""
+            width={1920}
+            height={1080}
+            className="hero-bg-video-el"
+            fetchPriority="high"
+          />
+        </picture>
         <div className="hero-bg-video-overlay" />
       </div>
 
@@ -41,14 +45,13 @@ export function Hero() {
         </div>
 
         <h1 className="hero-headline">
-          Insights that{" "}
-          <em>move</em> the market.
+          Insights that <span className="hero-headline-mark">move the market.</span>
         </h1>
 
         <p className="hero-stand">
           Clean, built-from-scratch intelligence, market analysis, and editorial research built for serious beginners who want{" "}
-          <span className="acc">clarity without the chaos</span>.
-          Not AI-generated. Hand-curated by the desk.
+          <span className="hero-stand-u">clarity without the chaos</span>.
+          Not AI-generated. <span className="acc">Hand-curated by the desk</span>.
         </p>
 
         <div className="hero-trust-row">
@@ -66,8 +69,8 @@ export function Hero() {
         </div>
 
         <div className="cta-row">
-          <button type="button" onClick={scrollToPricing} className="cta-primary cta-gradient">
-            Start Your Edge <span className="arr">→</span>
+          <button type="button" onClick={scrollToPricing} className="cta-primary cta-gradient hero-cta-primary">
+            Join The Club <span className="arr">→</span>
           </button>
         </div>
       </div>
