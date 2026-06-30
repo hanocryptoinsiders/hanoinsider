@@ -12,30 +12,59 @@ import {
   Copy,
   Loader2,
   ShieldCheck,
-  Upload,
-  Wallet,
+  TimerReset,
 } from "lucide-react";
 import { LogoMark } from "@/components/LogoMark";
 import { isPlanId, isValidEmail } from "@/lib/payments";
 import type { PublicCryptoSettings } from "@/lib/crypto-payments";
 
-type Step = "pay" | "proof" | "done";
+type Step = "form" | "done" | "expired";
 
-type PaymentOption = PublicCryptoSettings["paymentOptions"][number];
-
-const STEP_LABELS = ["Send payment", "Submit proof", "Done"];
+type Intent = {
+  id: string;
+  status: "pending" | "confirmed" | "expired" | "failed";
+  walletAddress: string;
+  amount: number;
+  currency: string;
+  network: string;
+  networkLabel: string;
+  chainId: number;
+  expiresAt: string;
+  windowMinutes: number;
+  email: string;
+  planName: string;
+  transactionHash: string | null;
+};
 
 function qrUrl(data: string) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=${encodeURIComponent(data)}`;
 }
 
-function stepClass(step: Step, target: Step, index: number): string {
-  const order = { pay: 0, proof: 1, done: 2 };
-  const current = order[step];
-  const pos = order[target];
-  if (current === pos) return "crypto-pay__step crypto-pay__step--active";
-  if (current > pos) return "crypto-pay__step crypto-pay__step--done";
-  return "crypto-pay__step";
+/** Highlights the first two and last two characters so buyers can sanity-check the address. */
+function HighlightedAddress({ address }: { address: string }) {
+  const hasPrefix = address.toLowerCase().startsWith("0x");
+  const prefix = hasPrefix ? address.slice(0, 2) : "";
+  const body = hasPrefix ? address.slice(2) : address;
+  if (body.length < 4) return <code className="crypto-pay__wallet-code">{address}</code>;
+  const head = body.slice(0, 2);
+  const middle = body.slice(2, -2);
+  const tail = body.slice(-2);
+  const mark = "rounded bg-[var(--accent-soft,#9b82dc)]/25 px-0.5 font-bold text-white";
+  return (
+    <code className="crypto-pay__wallet-code">
+      {prefix}
+      <span className={mark}>{head}</span>
+      {middle}
+      <span className={mark}>{tail}</span>
+    </code>
+  );
+}
+
+function formatCountdown(msLeft: number): string {
+  const total = Math.max(0, Math.floor(msLeft / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 export function CryptoPaymentClient() {
@@ -47,31 +76,26 @@ export function CryptoPaymentClient() {
   const [settings, setSettings] = useState<PublicCryptoSettings | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
-  const [step, setStep] = useState<Step>("pay");
-  const [selectedOption, setSelectedOption] = useState<PaymentOption | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [amountPaid, setAmountPaid] = useState("");
+
+  const [step, setStep] = useState<Step>("form");
+  const [fullName, setFullName] = useState(() => {
+    const first = searchParams.get("firstName")?.trim() ?? "";
+    const last = searchParams.get("lastName")?.trim() ?? "";
+    return [first, last].filter(Boolean).join(" ");
+  });
+  const [email, setEmail] = useState(() => searchParams.get("email")?.trim() ?? "");
+  const [blockNotice, setBlockNotice] = useState<{ message: string; href: string; label: string } | null>(null);
+
+  const [creating, setCreating] = useState(false);
+  const [intent, setIntent] = useState<Intent | null>(null);
   const [transactionHash, setTransactionHash] = useState("");
-  const [senderWallet, setSenderWallet] = useState("");
-  const [userNotes, setUserNotes] = useState("");
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [proofFileName, setProofFileName] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [verifying, setVerifying] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   useEffect(() => {
     if (!planId) router.replace("/#pricing");
   }, [planId, router]);
-
-  useEffect(() => {
-    const first = searchParams.get("firstName")?.trim() ?? "";
-    const last = searchParams.get("lastName")?.trim() ?? "";
-    const prefillEmail = searchParams.get("email")?.trim() ?? "";
-    if (first || last) setFullName([first, last].filter(Boolean).join(" "));
-    if (prefillEmail) setEmail(prefillEmail);
-  }, [searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,17 +104,16 @@ export function CryptoPaymentClient() {
         const res = await fetch("/api/crypto/settings");
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to load payment settings");
-        if (!cancelled) {
-          setSettings(data);
-          if (data.paymentOptions?.length > 0) setSelectedOption(data.paymentOptions[0]);
-        }
+        if (!cancelled) setSettings(data);
       } catch (e) {
         if (!cancelled) setSettingsError(e instanceof Error ? e.message : "Failed to load settings");
       } finally {
         if (!cancelled) setLoadingSettings(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const selectedPlan = useMemo(
@@ -98,68 +121,109 @@ export function CryptoPaymentClient() {
     [settings, planId],
   );
 
+  const emailValid = isValidEmail(email.trim());
+  const canStart = Boolean(fullName.trim() && emailValid && !blockNotice);
+
+  const createIntent = useCallback(async () => {
+    if (!planId) return;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/crypto/intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName: fullName.trim(), email: email.trim(), planId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.code === "active_subscriber" || data.code === "already_registered") {
+          setBlockNotice({ message: data.error, href: "/login", label: "Log in" });
+        } else if (data.code === "already_paid") {
+          setBlockNotice({
+            message: data.error,
+            href: `/register?email=${encodeURIComponent(email.trim())}`,
+            label: "Create your account",
+          });
+        } else {
+          toast.error(data.error || "Could not start payment.");
+        }
+        return;
+      }
+      setIntent(data.intent as Intent);
+      setNowTs(Date.now());
+    } catch {
+      toast.error("Could not start payment. Please try again.");
+    } finally {
+      setCreating(false);
+    }
+  }, [planId, fullName, email]);
+
+  // Start the payment window automatically once a valid name + email are entered.
   useEffect(() => {
-    if (selectedPlan) setAmountPaid(String(selectedPlan.amountUsd));
-  }, [selectedPlan]);
+    if (step !== "form" || intent || creating || blockNotice || !canStart) return;
+    const t = setTimeout(() => {
+      void createIntent();
+    }, 600);
+    return () => clearTimeout(t);
+  }, [step, intent, creating, blockNotice, canStart, createIntent]);
+
+  const msLeft = intent ? new Date(intent.expiresAt).getTime() - nowTs : 0;
+
+  // Countdown + auto-expire once the window elapses.
+  useEffect(() => {
+    if (step !== "form" || !intent) return;
+    const t = setInterval(() => {
+      const now = Date.now();
+      setNowTs(now);
+      if (new Date(intent.expiresAt).getTime() - now <= 0) setStep("expired");
+    }, 1000);
+    return () => clearInterval(t);
+  }, [step, intent]);
 
   const copyAddress = useCallback(async () => {
-    if (!selectedOption?.walletAddress) return;
+    const address = intent?.walletAddress ?? settings?.walletAddress;
+    if (!address) return;
     try {
-      await navigator.clipboard.writeText(selectedOption.walletAddress);
+      await navigator.clipboard.writeText(address);
       setCopied(true);
       toast.success("Wallet address copied");
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Could not copy address");
     }
-  }, [selectedOption]);
+  }, [intent, settings]);
 
-  const validateProofForm = () => {
-    const errors: Record<string, string> = {};
-    if (!fullName.trim()) errors.fullName = "Required";
-    if (!email.trim()) errors.email = "Required";
-    else if (!isValidEmail(email.trim())) errors.email = "Enter a valid email";
-    if (!amountPaid.trim() || Number(amountPaid) <= 0) errors.amountPaid = "Enter the amount you sent";
-    if (!transactionHash.trim()) errors.transactionHash = "Required";
-    if (!senderWallet.trim()) errors.senderWallet = "Required";
-    if (!selectedOption) errors.crypto = "Select a payment network";
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+  const handleVerify = async () => {
+    if (!intent) {
+      toast.info("Enter your name and email first to start the payment.");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/crypto/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intentId: intent.id,
+          transactionHash: transactionHash.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.intent) setIntent(data.intent as Intent);
+      if (data.status === "confirmed") setStep("done");
+      else if (data.status === "expired" || data.status === "failed") setStep("expired");
+      else toast.info("Payment not detected yet. Wait a few seconds after sending, then click verify again.");
+    } catch {
+      toast.error("Verification failed. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
   };
 
-  const handleSubmitProof = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateProofForm() || !selectedOption || !selectedPlan || !planId) return;
-
-    setSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append("fullName", fullName.trim());
-      formData.append("email", email.trim());
-      formData.append("planId", planId);
-      formData.append("amountPaid", amountPaid);
-      formData.append("currency", selectedOption.currency);
-      formData.append("network", selectedOption.network);
-      formData.append("transactionHash", transactionHash.trim());
-      formData.append("senderWalletAddress", senderWallet.trim());
-      if (userNotes.trim()) formData.append("userNotes", userNotes.trim());
-      if (proofFile) formData.append("proof", proofFile);
-
-      const res = await fetch("/api/crypto/submissions", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Submission failed");
-        if (data.code === "duplicate_tx_hash") {
-          setFormErrors((p) => ({ ...p, transactionHash: "This transaction hash was already submitted" }));
-        }
-        return;
-      }
-      setStep("done");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+  const restart = () => {
+    setIntent(null);
+    setTransactionHash("");
+    setStep("form");
+    setNowTs(Date.now());
   };
 
   if (!planId || loadingSettings) {
@@ -179,7 +243,7 @@ export function CryptoPaymentClient() {
             <AlertTriangle className="mx-auto h-8 w-8 text-amber-400 mb-4" />
             <h1 className="crypto-pay__title">Crypto payments unavailable</h1>
             <p className="crypto-pay__subtitle mx-auto mt-3">
-              {settingsError || "Manual crypto payments are not configured yet. Please use card checkout or contact support."}
+              {settingsError || "Crypto payments are not configured yet. Please contact support."}
             </p>
             <Link href="/#pricing" className="crypto-pay__done-link inline-block mt-6">
               Back to pricing
@@ -190,13 +254,14 @@ export function CryptoPaymentClient() {
     );
   }
 
+  const amount = intent?.amount ?? selectedPlan.amountUsd;
+  const currency = intent?.currency ?? settings.currency;
+  const networkLabel = intent?.networkLabel ?? settings.networkLabel;
+  const walletAddress = intent?.walletAddress ?? settings.walletAddress;
+
   return (
     <div className="crypto-pay bg-noise">
-      <img
-        src="/assets/hanoinfrontend/bird-mascot.jpg"
-        alt=""
-        className="crypto-pay__bg"
-      />
+      <img src="/assets/hanoinfrontend/bird-mascot.jpg" alt="" className="crypto-pay__bg" />
       <div className="crypto-pay__overlay" />
       <div className="crypto-pay__glow" />
 
@@ -212,263 +277,222 @@ export function CryptoPaymentClient() {
 
         <div className="crypto-pay__eyebrow">
           <span className="pulse-dot" />
-          <span>Secure crypto checkout</span>
+          <span>Crypto checkout · USDC or USDT on {networkLabel}</span>
         </div>
 
         <h1 className="crypto-pay__title">Pay with crypto</h1>
         <p className="crypto-pay__subtitle">
-          Send your payment, then submit proof for manual verification. Access is granted only after our team approves your transaction.
+          Send <strong>{amount} {currency}</strong> (USDC or USDT) to the wallet below, then click verify.
+          A bridge like relay.link works too — no transaction hash needed.
         </p>
 
         <div className="crypto-pay__plan">
           <p className="crypto-pay__plan-label">Your selected plan</p>
           <p className="crypto-pay__plan-name">{selectedPlan.name}</p>
           <p className="crypto-pay__plan-meta">
-            {selectedPlan.priceLabel} · send exactly <strong>${selectedPlan.amountUsd.toFixed(2)}</strong> USD equivalent
+            Pay exactly{" "}
+            <strong>
+              {amount} {currency}
+            </strong>{" "}
+            (USDC or USDT on {networkLabel})
           </p>
         </div>
 
-        <ol className="crypto-pay__steps" aria-label="Checkout progress">
-          {(["pay", "proof", "done"] as Step[]).map((s, i) => (
-            <li key={s} className={stepClass(step, s, i)}>
-              <span className="crypto-pay__step-dot">
-                {step === "done" && s !== "done" ? <Check className="h-3 w-3" /> : i + 1}
-              </span>
-              <span className="crypto-pay__step-label">{STEP_LABELS[i]}</span>
-            </li>
-          ))}
-        </ol>
-
-        {step === "pay" && (
+        {step === "form" && (
           <div className="crypto-pay__space">
+            {/* Wallet — always visible */}
             <section className="crypto-pay__card">
-              <p className="crypto-pay__section-label">Payment network</p>
-              <div className="crypto-pay__networks">
-                {settings.paymentOptions.map((opt) => {
-                  const active =
-                    selectedOption?.currency === opt.currency &&
-                    selectedOption?.network === opt.network;
-                  return (
-                    <button
-                      key={`${opt.currency}-${opt.network}`}
-                      type="button"
-                      onClick={() => setSelectedOption(opt)}
-                      className={`crypto-pay__network${active ? " crypto-pay__network--active" : ""}`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
+              <div className="crypto-pay__alert">
+                <p>
+                  Send the <strong>exact amount</strong> of{" "}
+                  <strong>
+                    {amount} {currency}
+                  </strong>{" "}
+                  (USDC or USDT) on <strong>{networkLabel}</strong> only.
+                </p>
+                <p>
+                  Sending from an exchange? <strong>Don&apos;t deduct the fee from the amount</strong> — cover it on
+                  top so we receive the full {amount}. Wrong network can mean <strong>loss of funds</strong>.
+                </p>
               </div>
 
-              {selectedOption && (
-                <>
-                  <div className="crypto-pay__alert">
-                    <p>
-                      Send the <strong>exact amount</strong> of <strong>${selectedPlan.amountUsd.toFixed(2)}</strong> in{" "}
-                      {selectedOption.currency} on the <strong>{selectedOption.network}</strong> network only.
-                    </p>
-                    <p>
-                      Using the wrong network may result in <strong>permanent loss of funds</strong>. Double-check before sending.
-                    </p>
+              <div className="crypto-pay__pay-grid">
+                <div className="crypto-pay__qr">
+                  <img src={qrUrl(walletAddress)} alt="Wallet QR code" width={200} height={200} />
+                </div>
+                <div className="crypto-pay__wallet-block">
+                  <p className="crypto-pay__field-label">Receiving wallet ({networkLabel})</p>
+                  <div className="crypto-pay__wallet-row">
+                    <HighlightedAddress address={walletAddress} />
+                    <button
+                      type="button"
+                      onClick={copyAddress}
+                      className="crypto-pay__copy"
+                      aria-label="Copy wallet address"
+                    >
+                      {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                    </button>
                   </div>
-
-                  <div className="crypto-pay__pay-grid">
-                    <div className="crypto-pay__qr">
-                      <img
-                        src={qrUrl(selectedOption.walletAddress)}
-                        alt="Wallet QR code"
-                        width={200}
-                        height={200}
-                      />
+                  <p className="mt-1.5 text-[11px] text-[var(--fg-3,#6b7079)]">
+                    Check the highlighted first and last characters match before sending.
+                  </p>
+                  <div className="crypto-pay__meta-grid">
+                    <div className="crypto-pay__meta-cell">
+                      <span>Amount</span>
+                      <strong>
+                        {amount} {currency}
+                      </strong>
                     </div>
-                    <div className="crypto-pay__wallet-block">
-                      <p className="crypto-pay__field-label">Receiving wallet</p>
-                      <div className="crypto-pay__wallet-row">
-                        <code className="crypto-pay__wallet-code">{selectedOption.walletAddress}</code>
-                        <button
-                          type="button"
-                          onClick={copyAddress}
-                          className="crypto-pay__copy"
-                          aria-label="Copy wallet address"
-                        >
-                          {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-                        </button>
-                      </div>
-                      <div className="crypto-pay__meta-grid">
-                        <div className="crypto-pay__meta-cell">
-                          <span>Currency</span>
-                          <strong>{selectedOption.currency}</strong>
-                        </div>
-                        <div className="crypto-pay__meta-cell">
-                          <span>Network</span>
-                          <strong>{selectedOption.network}</strong>
-                        </div>
-                      </div>
+                    <div className="crypto-pay__meta-cell">
+                      <span>Network</span>
+                      <strong>{networkLabel}</strong>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <ol className="crypto-pay__instructions">
-                    <li>Copy the wallet address or scan the QR code.</li>
-                    <li>
-                      Send exactly <strong>${selectedPlan.amountUsd.toFixed(2)}</strong> in {selectedOption.currency} via{" "}
-                      {selectedOption.network}.
-                    </li>
-                    <li>Save your transaction hash for the next step.</li>
-                    <li>Submit proof for review — typically within {settings.verificationHours} hours.</li>
-                  </ol>
-                </>
-              )}
+              {/* Countdown */}
+              <div className="mt-4 flex items-center justify-between rounded-lg border border-[var(--border,#24272e)] bg-black/30 px-4 py-3">
+                <span className="flex items-center gap-2 text-xs text-[var(--fg-2,#c4c8d0)]">
+                  <TimerReset className="h-4 w-4 text-[var(--accent-soft,#9b82dc)]" />
+                  {intent ? "Time remaining to pay" : `Payment window: ${settings.windowMinutes} min`}
+                </span>
+                <span
+                  className="font-mono text-xl font-bold tabular-nums"
+                  style={{ color: intent && msLeft < 60_000 ? "#f87171" : "var(--accent-soft, #9b82dc)" }}
+                >
+                  {intent ? formatCountdown(msLeft) : `${settings.windowMinutes}:00`}
+                </span>
+              </div>
             </section>
 
-            <div className="crypto-pay__footer">
-              <p className="crypto-pay__support">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Support: {settings.supportEmail}
-              </p>
+            {/* Buyer details */}
+            <section className="crypto-pay__card crypto-pay__space">
+              <div>
+                <h2 className="crypto-pay__form-title">Your details</h2>
+                <p className="crypto-pay__form-meta">
+                  We email your access here and match it when you create your account.
+                </p>
+              </div>
+
+              <div className="crypto-pay__grid-2">
+                <div className="crypto-pay__field">
+                  <label className="crypto-pay__field-label">Full name</label>
+                  <input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="crypto-pay__input"
+                    placeholder="Jane Doe"
+                  />
+                </div>
+                <div className="crypto-pay__field">
+                  <label className="crypto-pay__field-label">Email address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setBlockNotice(null);
+                      if (intent) setIntent(null);
+                    }}
+                    className="crypto-pay__input"
+                    placeholder="you@example.com"
+                  />
+                </div>
+              </div>
+
+              {blockNotice && (
+                <div className="crypto-pay__alert">
+                  <p>{blockNotice.message}</p>
+                  <Link href={blockNotice.href} className="crypto-pay__done-link mt-2 inline-block">
+                    {blockNotice.label}
+                  </Link>
+                </div>
+              )}
+
+              <div className="crypto-pay__field">
+                <label className="crypto-pay__field-label">Transaction reference (optional)</label>
+                <input
+                  value={transactionHash}
+                  onChange={(e) => setTransactionHash(e.target.value)}
+                  className="crypto-pay__input crypto-pay__input--mono"
+                  placeholder="Paste your tx hash — or leave blank"
+                />
+                <p className="mt-1.5 text-[11px] text-[var(--fg-3,#6b7079)]">
+                  Paid via a bridge/exchange (e.g. relay.link gives a Solana hash)? Leave this blank — we detect
+                  your payment automatically by amount.
+                </p>
+              </div>
+
               <button
                 type="button"
-                onClick={() => setStep("proof")}
-                disabled={!selectedOption}
+                onClick={handleVerify}
+                disabled={verifying || !intent}
                 className="crypto-pay__btn-primary"
               >
-                <Wallet className="h-4 w-4" /> I&apos;ve sent the payment
+                {verifying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Checking the blockchain…
+                  </>
+                ) : creating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Starting…
+                  </>
+                ) : !intent ? (
+                  "Enter your name & email to start"
+                ) : (
+                  <>
+                    <ShieldCheck className="h-4 w-4" /> I&apos;ve paid — verify now
+                  </>
+                )}
               </button>
-            </div>
-          </div>
-        )}
-
-        {step === "proof" && selectedOption && (
-          <form onSubmit={handleSubmitProof} className="crypto-pay__card crypto-pay__space">
-            <div>
-              <h2 className="crypto-pay__form-title">Submit payment proof</h2>
-              <p className="crypto-pay__form-meta">
-                {selectedPlan.name} · ${selectedPlan.amountUsd.toFixed(2)} · {selectedOption.currency} ({selectedOption.network})
+              <p className="text-center text-[11px] text-[var(--fg-3,#6b7079)]">
+                After sending, wait a few seconds for the network to confirm, then click verify.
               </p>
-            </div>
+            </section>
 
-            <div className="crypto-pay__grid-2">
-              <div className="crypto-pay__field">
-                <label className="crypto-pay__field-label">Full name</label>
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="crypto-pay__input"
-                  placeholder="Jane Doe"
-                />
-                {formErrors.fullName && <p className="crypto-pay__field-error">{formErrors.fullName}</p>}
-              </div>
-              <div className="crypto-pay__field">
-                <label className="crypto-pay__field-label">Email address</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="crypto-pay__input"
-                  placeholder="you@example.com"
-                />
-                {formErrors.email && <p className="crypto-pay__field-error">{formErrors.email}</p>}
-              </div>
-            </div>
-
-            <div className="crypto-pay__grid-2">
-              <div className="crypto-pay__field">
-                <label className="crypto-pay__field-label">Amount paid (USD)</label>
-                <input
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value)}
-                  className="crypto-pay__input"
-                  inputMode="decimal"
-                />
-                {formErrors.amountPaid && <p className="crypto-pay__field-error">{formErrors.amountPaid}</p>}
-              </div>
-              <div className="crypto-pay__field">
-                <label className="crypto-pay__field-label">Currency / network</label>
-                <input
-                  readOnly
-                  value={`${selectedOption.currency} · ${selectedOption.network}`}
-                  className="crypto-pay__input crypto-pay__input--readonly"
-                />
-              </div>
-            </div>
-
-            <div className="crypto-pay__field">
-              <label className="crypto-pay__field-label">Transaction hash</label>
-              <input
-                value={transactionHash}
-                onChange={(e) => setTransactionHash(e.target.value)}
-                className="crypto-pay__input crypto-pay__input--mono"
-                placeholder="Paste your transaction hash"
-              />
-              {formErrors.transactionHash && <p className="crypto-pay__field-error">{formErrors.transactionHash}</p>}
-            </div>
-
-            <div className="crypto-pay__field">
-              <label className="crypto-pay__field-label">Sender wallet</label>
-              <input
-                value={senderWallet}
-                onChange={(e) => setSenderWallet(e.target.value)}
-                className="crypto-pay__input crypto-pay__input--mono"
-                placeholder="Your sending wallet address"
-              />
-              {formErrors.senderWallet && <p className="crypto-pay__field-error">{formErrors.senderWallet}</p>}
-            </div>
-
-            <div className="crypto-pay__field">
-              <label className="crypto-pay__field-label">Screenshot (optional)</label>
-              <label className="crypto-pay__upload">
-                <Upload className="h-5 w-5 shrink-0 text-[var(--accent-soft)]" />
-                <span className="crypto-pay__upload-text">
-                  {proofFileName ? proofFileName : "JPG, PNG, or WebP — max 5 MB"}
-                </span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                  className="sr-only"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-                    if (f) {
-                      setProofFile(f);
-                      setProofFileName(f.name);
-                    }
-                  }}
-                />
-              </label>
-            </div>
-
-            <div className="crypto-pay__field">
-              <label className="crypto-pay__field-label">Notes (optional)</label>
-              <textarea
-                value={userNotes}
-                onChange={(e) => setUserNotes(e.target.value)}
-                rows={3}
-                className="crypto-pay__input resize-none"
-                placeholder="Anything else we should know?"
-              />
-            </div>
-
-            <div className="crypto-pay__form-actions">
-              <button type="button" onClick={() => setStep("pay")} className="crypto-pay__btn-secondary">
-                Back
-              </button>
-              <button type="submit" disabled={submitting} className="crypto-pay__btn-primary">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit payment proof"}
-              </button>
-            </div>
-          </form>
+            <p className="crypto-pay__support">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Support: {settings.supportEmail}
+            </p>
+          </div>
         )}
 
         {step === "done" && (
           <div className="crypto-pay__card crypto-pay__done">
             <CheckCircle2 className="crypto-pay__done-icon" />
-            <h2>Proof received</h2>
+            <h2>Payment received</h2>
             <p>
-              Your submission is <strong className="text-foreground">pending manual review</strong>. We&apos;ll email you at{" "}
-              <strong className="text-foreground">{email}</strong> once approved — typically within {settings.verificationHours} hours.
+              We confirmed your{" "}
+              <strong className="text-foreground">
+                {intent?.amount ?? amount} {currency}
+              </strong>{" "}
+              payment on-chain and your access is active. Create your account with{" "}
+              <strong className="text-foreground">{intent?.email ?? email}</strong> to enter the dashboard.
             </p>
-            <Link href="/" className="crypto-pay__done-link">
-              Return to homepage
+            <Link
+              href={`/register?email=${encodeURIComponent(intent?.email ?? email)}`}
+              className="crypto-pay__done-link"
+            >
+              Create your account
             </Link>
+          </div>
+        )}
+
+        {step === "expired" && (
+          <div className="crypto-pay__card crypto-pay__done">
+            <TimerReset className="crypto-pay__done-icon" style={{ color: "#f59e0b" }} />
+            <h2>Payment window closed</h2>
+            <p>
+              We didn&apos;t detect your payment within the window. If you already sent the funds they are safe —
+              start a new payment to re-check the same wallet, or contact{" "}
+              <strong className="text-foreground">{settings.supportEmail}</strong> with your transaction details.
+            </p>
+            <div className="crypto-pay__form-actions mt-4">
+              <button type="button" onClick={restart} className="crypto-pay__btn-primary">
+                Start a new payment
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -301,7 +301,7 @@ export function BuyModal({
                 <span className="text-white/80">{email}</span>
               </div>
 
-              {/* Normal payment */}
+              {/* Card & wallets (Stripe) */}
               <button
                 onClick={handleNormalPayment}
                 disabled={isSubmitting}
@@ -317,7 +317,7 @@ export function BuyModal({
                 <span className="text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/60">→</span>
               </button>
 
-              {/* Crypto payment */}
+              {/* Crypto payment (USDC / USDT) */}
               <Link
                 href={`/pay/crypto?${new URLSearchParams({
                   plan: plan.id,
@@ -332,14 +332,14 @@ export function BuyModal({
                   <Bitcoin className="h-5 w-5" />
                 </span>
                 <span className="flex-1">
-                  <span className="block text-sm font-semibold text-white">Crypto payment</span>
-                  <span className="block text-xs text-white/45">USDT / USDC — manual verification</span>
+                  <span className="block text-sm font-semibold text-white">Pay with USDC or USDT</span>
+                  <span className="block text-xs text-white/45">BEP20 on BNB Smart Chain — auto-verified on-chain</span>
                 </span>
                 <span className="text-white/30 transition group-hover:translate-x-0.5 group-hover:text-white/60">→</span>
               </Link>
 
               <p className="flex items-center justify-center gap-1.5 pt-2 text-[11px] text-white/35">
-                <ShieldCheck className="h-3 w-3" /> Payments are processed securely by Stripe.
+                <ShieldCheck className="h-3 w-3" /> Card payments via Stripe · crypto verified on-chain.
               </p>
             </div>
           )}

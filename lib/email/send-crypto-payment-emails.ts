@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/email/resend";
 import {
   buildCryptoProofReceivedEmail,
   buildCryptoPaymentApprovedEmail,
+  buildCryptoPaymentReceivedEmail,
   buildCryptoPaymentRejectedEmail,
 } from "@/lib/email/crypto-payment-emails";
 import { getManualVerificationHours } from "@/lib/crypto-payments";
@@ -30,6 +31,39 @@ export async function sendCryptoProofReceivedEmail(args: {
 
   if (result.error) {
     console.error("[email] crypto proof received failed:", result.error);
+  }
+}
+
+/**
+ * "Payment received" — sent once an on-chain crypto payment is auto-verified.
+ * Tells new buyers to register and already-registered users they're active.
+ */
+export async function sendCryptoPaymentReceivedEmail(args: {
+  email: string;
+  fullName: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  alreadyRegistered: boolean;
+}): Promise<void> {
+  const built = buildCryptoPaymentReceivedEmail({
+    firstName: args.fullName,
+    planName: args.planName,
+    amount: args.amount,
+    currency: args.currency,
+    alreadyRegistered: args.alreadyRegistered,
+  });
+
+  const result = await sendEmail({
+    to: args.email,
+    subject: built.subject,
+    html: built.html,
+    text: built.text,
+    tags: [{ name: "type", value: "crypto_payment_received" }],
+  });
+
+  if (result.error) {
+    console.error("[email] crypto payment received failed:", result.error);
   }
 }
 

@@ -69,6 +69,41 @@ export function buildCryptoPaymentApprovedEmail(args: {
   };
 }
 
+export function buildCryptoPaymentReceivedEmail(args: {
+  firstName?: string | null;
+  planName: string;
+  amount: number;
+  currency: string;
+  alreadyRegistered: boolean;
+}): BuiltEmail {
+  const name = args.firstName?.trim().split(/\s+/)[0] || "there";
+  const registerUrl = `${getSiteUrl()}/register`;
+  const dashboardUrl = `${getSiteUrl()}/dashboard`;
+  const amountLabel = `${args.amount} ${args.currency}`;
+  const subject = `Payment received — your ${BRAND} access is active`;
+
+  const nextStep = args.alreadyRegistered
+    ? `Your membership has been <strong style="color:#ffffff;">activated</strong> on your existing account — just <a href="${dashboardUrl}" style="color:${ACCENT};">open your dashboard</a> and you're in.`
+    : `<strong style="color:#ffffff;">Next step:</strong> create your account using the <strong style="color:#ffffff;">same email address</strong> you used for this payment. Your member dashboard, market data, and insights unlock immediately.`;
+
+  const bodyHtml = `Hi ${name},<br /><br />
+    We received and verified your crypto payment of <strong style="color:#ffffff;">${amountLabel}</strong> for <strong style="color:#ffffff;">${args.planName}</strong>. Your transaction was confirmed on-chain — nothing else is needed from you to complete the payment.<br /><br />
+    ${nextStep}`;
+
+  const text = args.alreadyRegistered
+    ? `Hi ${name},\n\nWe received and verified your crypto payment of ${amountLabel} for ${args.planName}. Your membership is active.\n\nOpen your dashboard: ${dashboardUrl}\n\n— ${BRAND}`
+    : `Hi ${name},\n\nWe received and verified your crypto payment of ${amountLabel} for ${args.planName}. Your access is approved.\n\nCreate your account (use the same email): ${registerUrl}\n\n— ${BRAND}`;
+
+  return {
+    subject,
+    html: emailShell(subject, "Payment received — you're in", bodyHtml, {
+      label: args.alreadyRegistered ? "Open dashboard" : "Complete registration",
+      href: args.alreadyRegistered ? dashboardUrl : registerUrl,
+    }),
+    text,
+  };
+}
+
 export function buildCryptoPaymentRejectedEmail(args: {
   firstName?: string | null;
   planName: string;

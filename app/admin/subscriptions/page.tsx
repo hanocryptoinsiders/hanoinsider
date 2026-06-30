@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import AdminSubscriptionsClient from "./AdminSubscriptionsClient";
 import { AdminCryptoPaymentsSection } from "./AdminCryptoPaymentsSection";
+import { AdminCryptoIntentsSection } from "./AdminCryptoIntentsSection";
 import { AdminOverviewSkeleton } from "@/components/loading/skeletons";
 import {
   loadAdminSubscriptionsData,
@@ -99,6 +100,7 @@ async function SubscriptionsDataFetcher() {
           ))}
         </div>
         <AdminSubscriptionsClient rows={rows} />
+        <AdminCryptoIntentsSection />
         <AdminCryptoPaymentsSection payments={cryptoPayments} />
       </>
     );
