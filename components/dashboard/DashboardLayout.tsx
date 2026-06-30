@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import {
-  Search,
   Home,
   TrendingUp,
   Zap,
@@ -17,6 +16,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { DeskSearch } from "@/components/dashboard/DeskSearch";
 import { TierProvider } from "@/lib/tier-context";
 import { useAuth } from "@/lib/auth-context";
 import { QuoteProvider } from "@/lib/quote-context";
@@ -342,7 +342,9 @@ function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="dash-shell">
-      <RouteProgress />
+      <Suspense fallback={null}>
+        <RouteProgress />
+      </Suspense>
       <div className="dash-frame flex min-h-screen">
         <aside className="dash-sidebar sticky top-0 hidden h-screen w-[236px] shrink-0 md:block">
           <SidebarContent />
@@ -361,8 +363,7 @@ function Shell({ children }: { children: ReactNode }) {
               </div>
 
               <div className="relative hidden max-w-sm flex-1 lg:block">
-                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--fg-3)]" strokeWidth={1.5} />
-                <input placeholder="Search desk…" className="dash-search" />
+                <DeskSearch />
               </div>
 
               <NotificationBell />
