@@ -36,7 +36,7 @@ export function Navbar() {
             </button>
           ) : (
             <>
-              <Link href="/login" className="topbar-action mx-2 topbar-action--plain">
+              <Link href="/login" className="topbar-action topbar-action--plain">
                 Log In
               </Link>
               <button type="button" onClick={scrollToPricing} className="topbar-cta-btn">
