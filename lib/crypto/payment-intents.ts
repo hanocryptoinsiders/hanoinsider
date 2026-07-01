@@ -108,7 +108,17 @@ export async function createCryptoIntent(input: CreateIntentInput): Promise<Crea
     return { success: false, error: "Crypto payments are not configured.", code: "not_configured" };
   }
 
-  const supabase = getServiceSupabase();
+  let supabase;
+  try {
+    supabase = getServiceSupabase();
+  } catch (configError) {
+    console.error("[crypto/intent] missing service configuration:", configError);
+    return {
+      success: false,
+      error: "Crypto payments are temporarily unavailable. Please contact support.",
+      code: "server_config",
+    };
+  }
 
   // Eligibility: block emails that already have access or a completed payment.
   const { data: profile } = await supabase

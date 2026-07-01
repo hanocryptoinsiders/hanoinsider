@@ -87,6 +87,7 @@ export function CryptoPaymentClient() {
   const [blockNotice, setBlockNotice] = useState<{ message: string; href: string; label: string } | null>(null);
 
   const [creating, setCreating] = useState(false);
+  const [intentStartFailed, setIntentStartFailed] = useState(false);
   const [intent, setIntent] = useState<Intent | null>(null);
   const [transactionHash, setTransactionHash] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -124,27 +125,45 @@ export function CryptoPaymentClient() {
   const emailValid = isValidEmail(email.trim());
   const canStart = Boolean(fullName.trim() && emailValid && !blockNotice);
 
+  useEffect(() => {
+    setIntentStartFailed(false);
+  }, [fullName, email]);
+
   const createIntent = useCallback(async () => {
     if (!planId) return;
     setCreating(true);
+    setIntentStartFailed(false);
     try {
       const res = await fetch("/api/crypto/intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fullName: fullName.trim(), email: email.trim(), planId }),
       });
-      const data = await res.json();
+
+      let data: { error?: string; code?: string; intent?: Intent } = {};
+      try {
+        data = await res.json();
+      } catch {
+        toast.error("Could not start payment. Please try again.");
+        setIntentStartFailed(true);
+        return;
+      }
+
       if (!res.ok) {
         if (data.code === "active_subscriber" || data.code === "already_registered") {
-          setBlockNotice({ message: data.error, href: "/login", label: "Log in" });
+          setBlockNotice({ message: data.error || "Please log in.", href: "/login", label: "Log in" });
         } else if (data.code === "already_paid") {
           setBlockNotice({
-            message: data.error,
+            message: data.error || "Payment already completed.",
             href: `/register?email=${encodeURIComponent(email.trim())}`,
             label: "Create your account",
           });
+        } else if (data.code === "server_config") {
+          toast.error("Crypto payments are temporarily unavailable. Please use card checkout or contact support.");
+          setIntentStartFailed(true);
         } else {
           toast.error(data.error || "Could not start payment.");
+          setIntentStartFailed(true);
         }
         return;
       }
@@ -152,19 +171,11 @@ export function CryptoPaymentClient() {
       setNowTs(Date.now());
     } catch {
       toast.error("Could not start payment. Please try again.");
+      setIntentStartFailed(true);
     } finally {
       setCreating(false);
     }
   }, [planId, fullName, email]);
-
-  // Start the payment window automatically once a valid name + email are entered.
-  useEffect(() => {
-    if (step !== "form" || intent || creating || blockNotice || !canStart) return;
-    const t = setTimeout(() => {
-      void createIntent();
-    }, 600);
-    return () => clearTimeout(t);
-  }, [step, intent, creating, blockNotice, canStart, createIntent]);
 
   const msLeft = intent ? new Date(intent.expiresAt).getTime() - nowTs : 0;
 
@@ -194,7 +205,7 @@ export function CryptoPaymentClient() {
 
   const handleVerify = async () => {
     if (!intent) {
-      toast.info("Enter your name and email first to start the payment.");
+      toast.info("Click “Start payment window” first after entering your details.");
       return;
     }
     setVerifying(true);
@@ -222,6 +233,7 @@ export function CryptoPaymentClient() {
   const restart = () => {
     setIntent(null);
     setTransactionHash("");
+    setIntentStartFailed(false);
     setStep("form");
     setNowTs(Date.now());
   };
@@ -282,8 +294,9 @@ export function CryptoPaymentClient() {
 
         <h1 className="crypto-pay__title">Pay with crypto</h1>
         <p className="crypto-pay__subtitle">
-          Send <strong>{amount} {currency}</strong> (USDC or USDT) to the wallet below, then click verify.
-          A bridge like relay.link works too — no transaction hash needed.
+          Enter your details, click <strong>Start payment window</strong>, send{" "}
+          <strong>{amount} {currency}</strong> (USDC or USDT) to the wallet below, then click{" "}
+          <strong>Verify</strong>. Nothing is checked until you click verify.
         </p>
 
         <div className="crypto-pay__plan">
@@ -410,45 +423,64 @@ export function CryptoPaymentClient() {
                 </div>
               )}
 
-              <div className="crypto-pay__field">
-                <label className="crypto-pay__field-label">Transaction reference (optional)</label>
-                <input
-                  value={transactionHash}
-                  onChange={(e) => setTransactionHash(e.target.value)}
-                  className="crypto-pay__input crypto-pay__input--mono"
-                  placeholder="Paste your tx hash — or leave blank"
-                />
-                <p className="mt-1.5 text-[11px] text-[var(--fg-3,#6b7079)]">
-                  Paid via a bridge/exchange (e.g. relay.link gives a Solana hash)? Leave this blank — we detect
-                  your payment automatically by amount.
-                </p>
-              </div>
+              {intentStartFailed && !blockNotice && (
+                <div className="crypto-pay__alert">
+                  <p>Could not start the payment window. Check your connection or try card checkout.</p>
+                </div>
+              )}
 
-              <button
-                type="button"
-                onClick={handleVerify}
-                disabled={verifying || !intent}
-                className="crypto-pay__btn-primary"
-              >
-                {verifying ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Checking the blockchain…
-                  </>
-                ) : creating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Starting…
-                  </>
-                ) : !intent ? (
-                  "Enter your name & email to start"
-                ) : (
-                  <>
-                    <ShieldCheck className="h-4 w-4" /> I&apos;ve paid — verify now
-                  </>
-                )}
-              </button>
-              <p className="text-center text-[11px] text-[var(--fg-3,#6b7079)]">
-                After sending, wait a few seconds for the network to confirm, then click verify.
-              </p>
+              {!intent ? (
+                <button
+                  type="button"
+                  onClick={() => void createIntent()}
+                  disabled={creating || !canStart}
+                  className="crypto-pay__btn-primary"
+                >
+                  {creating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Starting payment window…
+                    </>
+                  ) : (
+                    "Start payment window"
+                  )}
+                </button>
+              ) : (
+                <>
+                  <div className="crypto-pay__field">
+                    <label className="crypto-pay__field-label">Transaction reference (optional)</label>
+                    <input
+                      value={transactionHash}
+                      onChange={(e) => setTransactionHash(e.target.value)}
+                      className="crypto-pay__input crypto-pay__input--mono"
+                      placeholder="Paste your tx hash — or leave blank"
+                    />
+                    <p className="mt-1.5 text-[11px] text-[var(--fg-3,#6b7079)]">
+                      Paid via a bridge/exchange (e.g. relay.link gives a Solana hash)? Leave this blank — we detect
+                      your payment automatically by amount.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleVerify}
+                    disabled={verifying}
+                    className="crypto-pay__btn-primary"
+                  >
+                    {verifying ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Checking the blockchain…
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="h-4 w-4" /> I&apos;ve paid — verify now
+                      </>
+                    )}
+                  </button>
+                  <p className="text-center text-[11px] text-[var(--fg-3,#6b7079)]">
+                    After sending, wait a few seconds for the network to confirm, then click verify.
+                  </p>
+                </>
+              )}
             </section>
 
             <p className="crypto-pay__support">
