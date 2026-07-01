@@ -4,8 +4,7 @@ import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { sendWelcomeEmailIfNeeded } from "@/lib/email/send-welcome";
 import { normalizeEmail } from "@/lib/payments";
-import { getPlanAmountUsd, isPlanId } from "@/lib/payments";
-import { buildReferralPaidCustomerFields } from "@/lib/referrals";
+import { recordPaidCustomerFromCheckoutSession } from "@/lib/stripe/paid-customer";
 
 export const runtime = "nodejs";
 
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
         const session = event.data.object as Stripe.Checkout.Session;
         // Persist the paid customer FIRST — this is the source of truth that
         // later gates registration eligibility and dashboard access.
-        await recordPaidCustomer(supabase, session);
+        await recordPaidCustomerFromCheckoutSession(supabase, session);
         if (session.payment_status === "paid" || session.payment_status === "no_payment_required") {
           const meta = session.metadata ?? {};
           const rawEmail = meta.email || session.customer_details?.email || session.customer_email || "";
@@ -103,69 +102,6 @@ export async function POST(request: Request) {
 
 function normalizeEmailLocal(email: string) {
   return normalizeEmail(email);
-}
-
-/**
- * Records (or refreshes) the paid_customers row after Stripe confirms payment.
- * Email is normalized before storage. has_registered is never reset here so a
- * later webhook replay cannot un-register an existing account.
- */
-async function recordPaidCustomer(supabase: SB, session: Stripe.Checkout.Session) {
-  const meta = session.metadata ?? {};
-  const rawEmail = meta.email || session.customer_details?.email || session.customer_email || "";
-  if (!rawEmail) {
-    console.error("[stripe/webhook] checkout.session.completed missing email:", session.id);
-    return;
-  }
-  const email = normalizeEmailLocal(rawEmail);
-
-  const customerId =
-    typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
-
-  const isPaid = session.payment_status === "paid" || session.payment_status === "no_payment_required";
-
-  const planId = meta.plan_id || meta.plan_type || null;
-  let amountPaidUsd: number | null = null;
-  if (typeof session.amount_total === "number" && session.amount_total > 0) {
-    amountPaidUsd = session.amount_total / 100;
-  } else if (planId && isPlanId(planId)) {
-    amountPaidUsd = getPlanAmountUsd(planId);
-  } else if (meta.amount_paid_usd) {
-    amountPaidUsd = parseFloat(meta.amount_paid_usd);
-  }
-
-  const referralFields = await buildReferralPaidCustomerFields(
-    supabase,
-    meta.referral_code && meta.referrer_user_id
-      ? { referralCode: meta.referral_code, referrerUserId: meta.referrer_user_id }
-      : null,
-    email,
-  );
-
-  const { data: existing } = await supabase
-    .from("paid_customers")
-    .select("id, has_registered")
-    .eq("email", email)
-    .maybeSingle();
-
-  const base = {
-    first_name: meta.first_name || null,
-    last_name: meta.last_name || null,
-    email,
-    selected_plan: meta.plan_id || meta.plan_type || null,
-    stripe_customer_id: customerId,
-    stripe_checkout_session_id: session.id,
-    payment_status: isPaid ? "paid" : session.payment_status ?? "pending",
-    paid_at: isPaid ? new Date().toISOString() : null,
-    amount_paid_usd: amountPaidUsd,
-    ...referralFields,
-  };
-
-  if (existing) {
-    await supabase.from("paid_customers").update(base).eq("id", existing.id);
-  } else {
-    await supabase.from("paid_customers").insert({ ...base, has_registered: false });
-  }
 }
 
 async function syncStripeSubscription(supabase: SB, subscription: Stripe.Subscription, event: Stripe.Event) {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LogoMark } from "@/components/LogoMark";
 import { useAuth } from "@/lib/auth-context";
@@ -10,7 +10,35 @@ import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, ShieldCheck, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { normalizeEmail } from "@/lib/payments";
 
-type Eligibility = "unknown" | "checking" | "eligible" | "not_paid" | "pending_crypto_review" | "already_registered";
+type Eligibility = "unknown" | "checking" | "confirming_payment" | "eligible" | "not_paid" | "pending_crypto_review" | "already_registered";
+
+async function confirmCheckoutSession(sessionId: string, email?: string) {
+  const res = await fetch("/api/checkout/confirm-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, email: email || undefined }),
+  });
+  return res.json() as Promise<{
+    success?: boolean;
+    email?: string;
+    registrationStatus?: "eligible" | "already_registered" | "not_paid";
+    error?: string;
+  }>;
+}
+
+async function fetchEligibility(trimmed: string): Promise<Eligibility> {
+  const res = await fetch("/api/auth/check-eligibility", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: trimmed }),
+  });
+  const data = await res.json();
+  if (data.status === "eligible") return "eligible";
+  if (data.status === "already_registered") return "already_registered";
+  if (data.status === "pending_crypto_review") return "pending_crypto_review";
+  if (data.status === "not_paid") return "not_paid";
+  return "unknown";
+}
 
 function RegisterContent() {
   const router = useRouter();
@@ -26,12 +54,77 @@ function RegisterContent() {
   const [eligibility, setEligibility] = useState<Eligibility>("unknown");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const confirmingSessionRef = useRef(false);
+
+  const sessionId = searchParams.get("session_id");
 
   // Prefill email from the Stripe success redirect (?email=...).
   useEffect(() => {
     const e = searchParams.get("email");
     if (e) setEmail(e);
   }, [searchParams]);
+
+  // Confirm Stripe checkout immediately so registration does not wait on the webhook.
+  useEffect(() => {
+    if (!sessionId) return;
+
+    let cancelled = false;
+    confirmingSessionRef.current = true;
+    setEligibility("confirming_payment");
+
+    (async () => {
+      const emailParam = searchParams.get("email") || "";
+      let confirmedEmail = emailParam;
+
+      for (let attempt = 0; attempt < 8 && !cancelled; attempt++) {
+        try {
+          const data = await confirmCheckoutSession(sessionId, confirmedEmail || undefined);
+          if (data.email) {
+            confirmedEmail = data.email;
+            setEmail(data.email);
+          }
+          if (data.registrationStatus === "eligible") {
+            setEligibility("eligible");
+            confirmingSessionRef.current = false;
+            return;
+          }
+          if (data.registrationStatus === "already_registered") {
+            setEligibility("already_registered");
+            confirmingSessionRef.current = false;
+            return;
+          }
+        } catch {
+          /* retry below */
+        }
+
+        if (confirmedEmail) {
+          const status = await fetchEligibility(normalizeEmail(confirmedEmail));
+          if (status === "eligible" || status === "already_registered") {
+            if (!cancelled) setEligibility(status);
+            confirmingSessionRef.current = false;
+            return;
+          }
+        }
+
+        if (attempt < 7) {
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
+
+      if (!cancelled && confirmedEmail) {
+        const status = await fetchEligibility(normalizeEmail(confirmedEmail));
+        setEligibility(status === "unknown" ? "not_paid" : status);
+      } else if (!cancelled) {
+        setEligibility("not_paid");
+      }
+      confirmingSessionRef.current = false;
+    })();
+
+    return () => {
+      cancelled = true;
+      confirmingSessionRef.current = false;
+    };
+  }, [sessionId, searchParams]);
 
   // Redirect if already authenticated.
   useEffect(() => {
@@ -40,6 +133,8 @@ function RegisterContent() {
 
   // Check paid-email eligibility (debounced) for inline feedback.
   useEffect(() => {
+    if (sessionId && confirmingSessionRef.current) return;
+
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setEligibility("unknown");
@@ -48,23 +143,13 @@ function RegisterContent() {
     setEligibility("checking");
     const t = setTimeout(async () => {
       try {
-        const res = await fetch("/api/auth/check-eligibility", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: trimmed }),
-        });
-        const data = await res.json();
-        if (data.status === "eligible") setEligibility("eligible");
-        else if (data.status === "already_registered") setEligibility("already_registered");
-        else if (data.status === "pending_crypto_review") setEligibility("pending_crypto_review");
-        else if (data.status === "not_paid") setEligibility("not_paid");
-        else setEligibility("unknown");
+        setEligibility(await fetchEligibility(trimmed));
       } catch {
         setEligibility("unknown");
       }
     }, 500);
     return () => clearTimeout(t);
-  }, [email]);
+  }, [email, sessionId]);
 
   const passwordStrength = (() => {
     if (!password) return 0;
@@ -99,10 +184,35 @@ function RegisterContent() {
     const normalizedEmail = normalizeEmail(email);
     setIsSubmitting(true);
     try {
+      if (sessionId && eligibility === "not_paid") {
+        await confirmCheckoutSession(sessionId, normalizedEmail);
+        const refreshed = await fetchEligibility(normalizedEmail);
+        if (refreshed === "eligible") setEligibility("eligible");
+        else if (refreshed === "already_registered") {
+          setEligibility("already_registered");
+          setFormError("This paid email already has an account. Please log in instead.");
+          setIsSubmitting(false);
+          return;
+        } else if (refreshed === "pending_crypto_review") {
+          setEligibility("pending_crypto_review");
+          setFormError("Your payment has not been verified yet. Please wait for admin approval or contact support.");
+          setIsSubmitting(false);
+          return;
+        } else if (refreshed === "not_paid") {
+          setFormError("Still confirming your payment — please wait a moment and try again.");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail, password }),
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+          ...(sessionId ? { sessionId } : {}),
+        }),
       });
 
       let data: { error?: string; code?: string; success?: boolean; sessionEstablished?: boolean } = {};
@@ -115,6 +225,42 @@ function RegisterContent() {
       }
 
       if (!res.ok) {
+        if (data.code === "not_paid" && sessionId) {
+          await confirmCheckoutSession(sessionId, normalizedEmail);
+          const retry = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: normalizedEmail, password, sessionId }),
+          });
+          let retryData: typeof data = {};
+          try {
+            retryData = await retry.json();
+          } catch {
+            setFormError("Registration failed. Please try again.");
+            setIsSubmitting(false);
+            return;
+          }
+          if (retry.ok) {
+            if (!retryData.sessionEstablished) {
+              const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: normalizedEmail,
+                password,
+              });
+              if (signInError) {
+                toast.success("Account created! Please sign in with your new password.");
+                router.replace("/login");
+                return;
+              }
+            } else {
+              router.refresh();
+            }
+            toast.success("Welcome to Hano Insiders!");
+            router.replace("/dashboard");
+            return;
+          }
+          data = retryData;
+        }
+
         if (data.code === "not_paid") {
           setEligibility("not_paid");
           setFormError("Please use the same email address you used during payment.");
@@ -220,7 +366,9 @@ function RegisterContent() {
                   }`}
                   placeholder="you@example.com"
                 />
-                {eligibility === "checking" && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                {eligibility === "checking" || eligibility === "confirming_payment" ? (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                ) : null}
                 {eligibility === "eligible" && <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-400" />}
               </div>
               {fieldErrors.email && <p className="mt-1 text-xs text-destructive">{fieldErrors.email}</p>}
@@ -229,6 +377,9 @@ function RegisterContent() {
               )}
               {!fieldErrors.email && eligibility === "pending_crypto_review" && (
                 <p className="mt-1 text-xs text-amber-400">Your payment has not been verified yet. Please wait for admin approval or contact support.</p>
+              )}
+              {!fieldErrors.email && eligibility === "confirming_payment" && (
+                <p className="mt-1 text-xs text-muted-foreground">Confirming your payment…</p>
               )}
               {!fieldErrors.email && eligibility === "eligible" && (
                 <p className="mt-1 text-xs text-emerald-400">Payment verified — you&apos;re good to go.</p>
@@ -296,7 +447,7 @@ function RegisterContent() {
 
             <button
               type="submit"
-              disabled={isSubmitting || eligibility === "already_registered" || eligibility === "pending_crypto_review"}
+              disabled={isSubmitting || eligibility === "already_registered" || eligibility === "pending_crypto_review" || eligibility === "confirming_payment"}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground text-background py-3 text-sm font-semibold hover:bg-foreground/90 active:scale-[0.99] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_15px_-4px_rgba(255,255,255,0.2)]"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account & enter dashboard"}

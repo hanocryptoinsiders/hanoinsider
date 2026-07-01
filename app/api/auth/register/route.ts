@@ -4,6 +4,7 @@ import { getServiceSupabase } from "@/lib/supabase/service";
 import { normalizeEmail, isValidEmail, planToRole } from "@/lib/payments";
 import { hasPendingCryptoPayment } from "@/lib/crypto-payment-service";
 import { createReferralRewardsAfterRegistration } from "@/lib/referrals";
+import { confirmStripeCheckoutSession } from "@/lib/stripe/paid-customer";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
 
     const email = normalizeEmail(typeof body.email === "string" ? body.email : "");
     const password = typeof body.password === "string" ? body.password : "";
+    const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim() : "";
 
     if (!email || !isValidEmail(email)) {
       return NextResponse.json({ error: "Enter a valid email address.", code: "invalid_email" }, { status: 400 });
@@ -53,6 +55,17 @@ export async function POST(request: Request) {
         },
         { status: 500 },
       );
+    }
+
+    // Stripe redirect can beat the webhook — confirm the session before eligibility checks.
+    if (sessionId) {
+      const confirmed = await confirmStripeCheckoutSession(supabase, sessionId, email);
+      if (!confirmed.ok && confirmed.code === "email_mismatch") {
+        return NextResponse.json(
+          { error: "This checkout session does not match your email.", code: "session_email_mismatch" },
+          { status: 403 },
+        );
+      }
     }
 
     // 1. Verify the email has a confirmed paid record.
