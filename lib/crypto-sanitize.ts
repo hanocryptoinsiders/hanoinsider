@@ -1,11 +1,19 @@
-import DOMPurify from "isomorphic-dompurify";
-
 /** Alphanumeric + common crypto address/hash characters (hex, base58, etc.). */
 const TX_HASH_RE = /^[a-zA-Z0-9:_\-./+]{8,200}$/;
 const WALLET_RE = /^[a-zA-Z0-9:_\-./+]{8,128}$/;
 
+/**
+ * Plain-text sanitizer for names / notes. Strips HTML tags and stray angle
+ * brackets, trims, and truncates. Intentionally does NOT use a DOM-based library
+ * (isomorphic-dompurify / jsdom) — that crashes at module load on serverless
+ * (Vercel) and is overkill for plain text.
+ */
 export function sanitizeText(input: string, maxLen: number): string {
-  return DOMPurify.sanitize(input.trim(), { ALLOWED_TAGS: [] }).slice(0, maxLen);
+  return input
+    .replace(/<[^>]*>/g, "")
+    .replace(/[<>]/g, "")
+    .trim()
+    .slice(0, maxLen);
 }
 
 export function sanitizeFullName(input: string): string {

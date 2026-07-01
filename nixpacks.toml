@@ -1,0 +1,21 @@
+# Railway / Nixpacks config for the standalone crypto watcher.
+#
+# worker/crypto-poller.mjs uses only Node's built-in fetch — it has NO npm
+# dependencies — so we skip install and build entirely and just run the file.
+# This avoids installing the app's pnpm workspace on the worker service (which
+# was failing the Railway build). The Next.js app itself is deployed on Vercel,
+# not here, so skipping install/build is correct for this service.
+
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["echo 'worker: no dependencies to install'"]
+
+[phases.build]
+cmds = ["echo 'worker: no build step needed'"]
+
+[start]
+cmd = "node worker/crypto-poller.mjs"

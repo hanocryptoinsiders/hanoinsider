@@ -1,198 +1,204 @@
-# 🪙 Crypto Payments by Sanway
+# 🪙 Crypto Payments by Sanway — ✅ LIVE & WORKING
 
-Automatic, self-serve crypto checkout for Hano Insiders. A buyer picks a plan,
-sends a stablecoin to **one wallet**, clicks **Verify**, and the server confirms
-the payment **on-chain** and activates their membership — no middleman, no manual
-chasing. An admin panel is included for any edge cases.
+Members can pay for Hano Insiders with **crypto (USDC or USDT)** and get access
+**automatically**. They send the coins to one wallet, click **Verify**, and the
+server checks the blockchain and turns on their membership — no manual work.
 
-- **Network:** BNB Smart Chain (BSC, chain id `56`)
-- **Tokens accepted:** **USDC and USDT** (BEP20) — either works
-- **Bridges welcome:** paying via relay.link (Solana → BSC) delivers USDC and is matched automatically
-- **Reader:** Alchemy (free tier covers BSC)
-- **Verification:** happens when the buyer clicks **Verify** (and admins can verify/activate manually)
+> **Status: this is deployed and working in production right now.** A real
+> payment has been confirmed end-to-end (send → verify → membership active).
+
+- **Coins accepted:** **USDC and USDT** (either one)
+- **Network:** BNB Smart Chain (BSC / BEP20)
+- **Prices:** Regular **$79**, Early Bird **$49** (real plan prices)
+- **Bridges work too:** paying via **relay.link** (Solana → BSC) is auto-detected
+- **Card payments (Stripe) still work** alongside crypto
 
 ---
 
-## How it works
+## ✅ What we built (in simple terms)
+
+1. A **crypto checkout page** (`/pay/crypto`) that shows one wallet, the exact
+   amount, a QR code, and a 10-minute timer.
+2. A **backend that reads the blockchain** (via Alchemy) to see if the money
+   actually arrived in the wallet.
+3. **Automatic membership activation** + a **"Payment received" email** once the
+   payment is confirmed.
+4. An **admin panel** (Admin → Subscriptions → "Crypto payments") to manually
+   check / activate / reject any payment if needed.
+5. A **background watcher** (runs on Railway) that keeps checking for payments
+   even if the buyer closes the page.
+
+**No transaction hash needed.** We match the payment by the **amount** that lands
+in the wallet — so exchange/bridge payments (which sometimes only give a Solana
+hash) still work. The tx-hash box on the page is optional.
+
+---
+
+## How a payment flows
 
 ```
-Buyer → /pay/crypto → enters name + email
-      → server creates a "payment intent" (exact amount + wallet + 10-min window)
-      → buyer sends USDC/USDT (or bridges via relay.link) to the wallet
+Buyer → /pay/crypto → types name + email
+      → server creates a "payment intent" (exact amount + wallet + 10-min timer)
+      → buyer sends USDC/USDT to the wallet (or bridges via relay.link)
       → buyer clicks "I've paid — verify now"
-      → POST /api/crypto/verify  →  reads the wallet on-chain via Alchemy
-            • finds an incoming transfer to the wallet
-            • amount ≥ expected − tolerance, enough confirmations, within window
-      → intent marked CONFIRMED → paid_customers row set to "paid"
-            (an already-registered account is upgraded to premium directly)
-      → "Payment received" email is sent
+      → server reads the wallet on-chain (Alchemy)
+            • finds the incoming transfer
+            • amount is right (small shortfall allowed for fees), enough confirmations
+      → membership activated → "Payment received" email sent
       → buyer registers (or is already in) → dashboard unlocked
 ```
 
-**No transaction hash is required.** Matching is done by **amount on the
-receiving wallet**, so payments from exchanges/bridges (which may only give you a
-Solana hash) still work. The tx-hash box is optional — a non-EVM hash is simply
-ignored.
-
 ### Where the code lives
-
 | Area | File |
 |---|---|
-| On-chain reader (Alchemy/Etherscan, matching) | `lib/crypto/onchain.ts` |
-| Config (wallet, tokens, amount, window, tolerance) | `lib/crypto-payments.ts` |
-| Intent lifecycle + settlement + admin actions | `lib/crypto/payment-intents.ts` |
-| Buyer UI | `components/crypto/CryptoPaymentClient.tsx` → `/pay/crypto` |
-| Public API | `app/api/crypto/intent`, `app/api/crypto/verify`, `app/api/crypto/settings` |
-| Admin API | `app/api/admin/crypto-intents/**` |
-| Admin UI panel | `app/admin/subscriptions/AdminCryptoIntentsSection.tsx` |
+| Blockchain reader + matching | `lib/crypto/onchain.ts` |
+| Config: wallet, coins, amount, timer, tolerance | `lib/crypto-payments.ts` |
+| Payment lifecycle + activation + admin actions | `lib/crypto/payment-intents.ts` |
+| Buyer page | `components/crypto/CryptoPaymentClient.tsx` (`/pay/crypto`) |
+| Public APIs | `app/api/crypto/intent`, `.../verify`, `.../settings` |
+| Admin APIs | `app/api/admin/crypto-intents/**` |
+| Admin panel | `app/admin/subscriptions/AdminCryptoIntentsSection.tsx` |
 | Emails | `lib/email/crypto-payment-emails.ts` |
-| Optional background watcher | `worker/crypto-poller.mjs` |
-| DB migration | `supabase/migrations/023_crypto_payment_intents.sql` |
+| Background watcher | `worker/crypto-poller.mjs` |
+| Database migration | `supabase/migrations/023_crypto_payment_intents.sql` |
 
 ---
 
-## Configuration (environment variables)
+## 🔧 How to change common things (easy)
 
-Set these in `.env.local` for local dev and in your host (Vercel) for production.
+### Change the WALLET ADDRESS (where money is received)
+This is the wallet that receives all crypto payments. To change it:
 
-| Variable | Purpose | Example / default |
-|---|---|---|
-| `ALCHEMY_API_KEY` | On-chain reader (free, **required**). BNB Smart Chain app. | `CPqCNMuNy6JPGwoaJIGwW` |
-| `CRYPTO_RECEIVING_WALLET` | Wallet that receives payments (EVM `0x…`) | `0x1b9b412726fb86eef215eb4ec9cef58a095fdc38` |
-| `CRYPTO_PRICE_USD_OVERRIDE` | **Test mode** — flat amount for crypto. Remove for real prices. | `0.1` |
-| `CRYPTO_AMOUNT_TOLERANCE_USD` | Accept up to this much under the amount (bridge/exchange fees). Overpay always OK. | `0.5` |
-| `CRYPTO_PAYMENT_WINDOW_MINUTES` | How long the buyer has to pay | `10` |
-| `CRYPTO_MIN_CONFIRMATIONS` | Confirmations before a transfer counts | `3` (use `1` for fast tests) |
-| `CRYPTO_CURRENCY` | Display token (USDC/USDT both accepted regardless) | `USDC` |
-| `CRYPTO_PAYMENTS_ENABLED` | Master on/off switch | `true` |
-| `CRON_SECRET` | Auth for the background verifier / worker | any random string |
-| `RESEND_API_KEY` | Sends the "Payment received" email (optional) | from resend.com |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server DB writes (**secret**, never commit) | `sb_secret_…` |
-| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase client | — |
+1. Go to **Vercel → your project → Settings → Environment Variables**.
+2. Edit **`CRYPTO_RECEIVING_WALLET`** and paste your new **BSC (EVM `0x…`) wallet
+   address**. Example:
+   ```
+   CRYPTO_RECEIVING_WALLET=0xYourNewWalletAddressHere
+   ```
+3. **Redeploy** (Vercel → Deployments → ⋮ → Redeploy).
+4. Also update it in your local `.env.local` if you test locally.
 
-> **Our Alchemy API key:** `CPqCNMuNy6JPGwoaJIGwW`
-> (BNB Smart Chain Mainnet app — created at https://dashboard.alchemy.com).
-> To get a new one: Alchemy → Create App → network **BNB Smart Chain → Mainnet** → copy the API Key.
+⚠️ It **must be a BSC (BNB Smart Chain) wallet** you control. Double-check it —
+money sent to the wrong address is gone forever.
 
-### How to change the **wallet address**
-
-Set `CRYPTO_RECEIVING_WALLET` to any EVM `0x…` address you control on BSC:
-
-```bash
-CRYPTO_RECEIVING_WALLET=0xYourNewWalletAddressHere
-```
-
-If unset, it falls back to the default in `lib/crypto-payments.ts`
-(`DEFAULT_RECEIVING_WALLET`). After changing it, redeploy / restart.
-
-### How to change the **amount**
-
-- **For testing**, charge a flat amount regardless of plan:
-  ```bash
-  CRYPTO_PRICE_USD_OVERRIDE=0.1     # everyone pays 0.1
-  ```
-- **For production**, **remove** `CRYPTO_PRICE_USD_OVERRIDE`. The real plan prices
-  then apply, defined in `lib/payments.ts`:
+### Change the PRICE
+- Real prices live in `lib/payments.ts`:
   ```ts
   PLAN_AMOUNTS_USD = { regular: 79, early_bird: 49 }
   ```
-  Change those numbers to change real prices.
-- `CRYPTO_AMOUNT_TOLERANCE_USD` controls how much under the amount is still
-  accepted (set this to cover bridge fees, e.g. `1`–`2` for larger plans).
+  Change those numbers, commit, push → new prices go live.
+- For a cheap **test**, set `CRYPTO_PRICE_USD_OVERRIDE=0.1` (everyone pays $0.10).
+  **Remove it for production** so real prices apply.
 
-### Accepting a different token / chain
-Both USDC and USDT on BSC are accepted by default (see `getAcceptedTokens()` in
-`lib/crypto-payments.ts`). To add or change a token, set `CRYPTO_TOKEN_CONTRACT`,
-`CRYPTO_TOKEN_DECIMALS`, `CRYPTO_CURRENCY` (and `CRYPTO_CHAIN_ID` for another chain
-— make sure your Alchemy app covers it).
+### Change how much "short" is allowed (fees)
+`CRYPTO_AMOUNT_TOLERANCE_USD` = how much LESS than the price we still accept
+(covers bridge/exchange fees). Example `1` = a $79 payment is accepted down to
+$78. Overpayment is always accepted.
+
+### Change the payment timer
+`CRYPTO_PAYMENT_WINDOW_MINUTES` = minutes the buyer has to pay (default `10`).
+
+---
+
+## 🚀 GOING LIVE / LAUNCH — what to set (READ THIS)
+
+You have **THREE** places to configure: **Supabase** (database), **Vercel** (the
+website), and **Railway** (the background watcher). **All three are required.**
+
+### 1) Supabase (database) — one time
+Open **Supabase → SQL Editor** and run the file:
+`supabase/migrations/023_crypto_payment_intents.sql`
+(This creates the table that stores payments. Already done for the current DB.)
+
+### 2) Vercel (the website) — set these Environment Variables
+Vercel → your project → **Settings → Environment Variables**:
+
+| Variable | What to put |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | your Supabase **secret** key (`sb_secret_…`) — **required** |
+| `ALCHEMY_API_KEY` | your Alchemy key (BNB Smart Chain app) — **required** |
+| `CRON_SECRET` | a random password — **must be identical in Railway** |
+| `CRYPTO_RECEIVING_WALLET` | your live BSC wallet `0x…` |
+| `CRYPTO_AMOUNT_TOLERANCE_USD` | `1` (allow small fee shortfalls) |
+| `CRYPTO_MIN_CONFIRMATIONS` | `3` (safer for real money) |
+| `RESEND_API_KEY` + `EMAIL_FROM` | to send the "Payment received" email |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | your Supabase client keys |
+
+**Do NOT set `CRYPTO_PRICE_USD_OVERRIDE`** in production (that's only for cheap
+testing). Without it, real prices ($79 / $49) apply.
+
+**After changing any variable on Vercel, you MUST click Redeploy** — env changes
+don't apply to the old build.
+
+### 3) Railway (background watcher) — REQUIRED, not optional
+The watcher makes payments confirm **automatically** even if the buyer closes the
+tab. **Set it up** (deploy from this repo — it uses `railway.json` automatically),
+then add these **3** variables in Railway → your service → **Variables**:
+
+| Variable | Value |
+|---|---|
+| `APP_URL` | **use the `www` domain**, e.g. `https://www.hanoinsiders.com` |
+| `CRON_SECRET` | **the same value** you set on Vercel |
+| `POLL_INTERVAL_MS` | `20000` |
+
+> ⚠️ **VERY IMPORTANT — use the `www.` URL.** If your site redirects
+> `hanoinsiders.com` → `www.hanoinsiders.com`, you **must** put the final `www.`
+> address in `APP_URL`. On a redirect the security header is dropped and the
+> watcher gets rejected (`401`). Using the direct `www.` URL avoids this. This is
+> the exact issue we hit and fixed.
+
+**Railway needs ONLY those 3 variables — do NOT put the Alchemy or Supabase keys
+in Railway.** Those live in the Vercel app; the watcher only calls the app.
+
+Check **Railway → Deployments → Deploy Logs**. Working looks like:
+```
+[crypto-poller] watching https://www.hanoinsiders.com/api/cron/crypto-verify every 20000ms
+[crypto-poller] checked=0 confirmed=0 expired=0 pending=0
+```
+
+### ✅ Launch checklist
+- [ ] Migration `023` run in Supabase
+- [ ] Vercel has `SUPABASE_SERVICE_ROLE_KEY` + `ALCHEMY_API_KEY` + `CRON_SECRET`
+- [ ] `CRYPTO_PRICE_USD_OVERRIDE` **removed** on Vercel (real prices)
+- [ ] `CRYPTO_RECEIVING_WALLET` = your real wallet
+- [ ] Redeployed Vercel after setting variables
+- [ ] Railway watcher deployed with `APP_URL` = **`https://www.<yourdomain>`**
+- [ ] `CRON_SECRET` is the **same** in Vercel and Railway
+- [ ] Railway logs show `checked=… ` (not `401` / `500`)
+
+---
+
+## Admin: handling a payment manually
+**Admin → Subscriptions → "Crypto payments (on-chain)"** shows every payment.
+For any row you can:
+- **Re-check** — scan the blockchain again (ignores the timer)
+- **Manually activate** — force-grant access + send the email (use if someone
+  paid but the auto-check couldn't see it)
+- **Reject** — mark it failed
+
+Use this when a member emails "I paid but don't have access."
 
 ---
 
 ## Email ("Payment received")
-
-When a payment is confirmed, the buyer gets a **"Payment received — your access is
-active"** email (`buildCryptoPaymentReceivedEmail` in
-`lib/email/crypto-payment-emails.ts`), telling them to register (or that they're
-already active). To enable real sending, set:
-
-```bash
-RESEND_API_KEY=...                       # from https://resend.com
-EMAIL_FROM="Hano Insiders <hi@hanoinsiders.com>"   # must be a verified domain
-```
-
-Without `RESEND_API_KEY` the flow still works — the email is just skipped/logged.
-
----
-
-## Verification behavior
-
-- **Buyer-triggered:** verification runs when the buyer clicks **"I've paid —
-  verify now"**. Nothing is checked automatically on the page.
-- **Admin panel:** **Admin → Subscriptions → "Crypto payments (on-chain)"** lists
-  every payment. Per row you can **Re-check** (re-scan the chain, ignoring the
-  window), **Manually activate** (force access + send the email — use when someone
-  paid but auto-match couldn't see it), or **Reject**.
-- **Optional background watcher** (`worker/crypto-poller.mjs`): if you run it, it
-  auto-verifies pending payments even after the buyer closes the tab. **It's
-  optional** — leave it off for strictly click-to-verify; run it for hands-off
-  confirmation. (A Vercel cron in `vercel.json` does the same as a backup.)
-
----
-
-## Hosting online (production)
-
-### 1. Database (Supabase)
-Run the migration once in **Supabase → SQL Editor**:
-`supabase/migrations/023_crypto_payment_intents.sql`
-
-### 2. App (Vercel)
-Deploy the repo to Vercel and set the env vars (Project → Settings → Environment
-Variables):
-```
-NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-ALCHEMY_API_KEY, CRON_SECRET, RESEND_API_KEY, EMAIL_FROM
-CRYPTO_RECEIVING_WALLET            # your live wallet
-# (remove CRYPTO_PRICE_USD_OVERRIDE so real prices apply)
-CRYPTO_MIN_CONFIRMATIONS=3
-CRYPTO_AMOUNT_TOLERANCE_USD=1
-NEXT_PUBLIC_SITE_URL=https://your-domain.com
-```
-
-### 3. Background watcher (Railway) — optional
-For hands-off confirmation, deploy the watcher to Railway:
-1. New service from this repo.
-2. Start command: `node worker/crypto-poller.mjs` (or `npm run worker`).
-3. Env: `APP_URL=https://your-domain.com`, `CRON_SECRET=<same as the app>`,
-   optional `POLL_INTERVAL_MS=20000`.
-
-The worker needs only `APP_URL` + `CRON_SECRET` — all secrets stay in the app
-(Supabase, Alchemy, Resend keys all live in the Next.js app). Run it locally with:
-
-```bash
-APP_URL=http://localhost:3000 CRON_SECRET=<your-secret> node worker/crypto-poller.mjs
-```
-
-### 4. Go-live checklist
-- [ ] Migration `023` run on the prod database
-- [ ] `ALCHEMY_API_KEY` set (BNB Smart Chain)
-- [ ] `CRYPTO_RECEIVING_WALLET` = your real wallet
-- [ ] `CRYPTO_PRICE_USD_OVERRIDE` **removed** (real prices)
-- [ ] `CRYPTO_MIN_CONFIRMATIONS=3`, sensible `CRYPTO_AMOUNT_TOLERANCE_USD`
-- [ ] `RESEND_API_KEY` + verified `EMAIL_FROM` for the receipt email
-- [ ] `CRON_SECRET` set on both app and (if used) Railway worker
+On confirmation the buyer gets a **"Payment received — your access is active"**
+email. It needs `RESEND_API_KEY` (from resend.com) and a verified `EMAIL_FROM`
+domain. Without the key, payments still work — the email is just skipped.
 
 ---
 
 ## Test it locally
 ```bash
-cp .env.example .env.local      # fill in the values above
+cp .env.example .env.local      # fill in your values
 pnpm dev                        # http://localhost:3000
 ```
-Go to `/#pricing → Buy Now → Crypto payment`, send **USDC or USDT on BSC** to the
-wallet, click **Verify**. Confirmed → "Payment received" → `/register`.
+Go to `/#pricing → Buy Now → Pay with USDC/USDT`, send the coins on BSC, click
+**Verify**. For cheap testing set `CRYPTO_PRICE_USD_OVERRIDE=0.1` first.
 
-> 🔒 **Security:** never commit `SUPABASE_SERVICE_ROLE_KEY` or secret keys. If a
-> secret was shared anywhere, rotate it (Supabase/Alchemy both let you roll keys).
+> 🔒 **Security:** never commit secret keys (`SUPABASE_SERVICE_ROLE_KEY`,
+> `ALCHEMY_API_KEY`). If a key was ever shared or committed, **rotate it**
+> (Supabase and Alchemy both let you generate a fresh one), then update it in
+> Vercel + `.env.local`.
 
 ---
 
