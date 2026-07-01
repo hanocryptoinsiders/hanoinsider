@@ -5,7 +5,7 @@ import { useState } from "react";
 const items = [
   {
     q: "What is Hano Insiders?",
-    a: "Hano Insiders is a premium crypto intelligence desk built for serious beginners. Members get curated market overviews, in-depth research articles, weekly insight briefs, 50+ asset profiles, direct support, and affiliate tools.",
+    a: "Hano Insiders is a premium crypto intelligence desk built for serious beginners. Members get curated market overviews, in-depth research articles, weekly insight briefs, 50+ asset profiles, direct support, and referral rewards.",
   },
   {
     q: "Is this a signals group?",
@@ -13,7 +13,7 @@ const items = [
   },
   {
     q: "What do members get?",
-    a: "Members get full dashboard access including market overview, 50+ coin pages, weekly insight briefs, monthly research articles, direct support, and affiliate referral tools.",
+    a: "Members get full dashboard access including market overview, 50+ coin pages, weekly insight briefs, monthly research articles, direct support, and a referral program with USDC rewards on Base.",
   },
   {
     q: "Is this financial advice?",

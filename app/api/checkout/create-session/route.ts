@@ -5,6 +5,8 @@ import { PLANS, isPlanId, normalizeEmail, isValidEmail } from "@/lib/payments";
 import { getEarlyBirdAvailability } from "@/lib/early-bird";
 import { getCheckoutEligibility, checkoutEligibilityMessage } from "@/lib/checkout-eligibility";
 import { getServiceSupabase } from "@/lib/supabase/service";
+import { getValidatedReferralFromCookies } from "@/lib/referrals-cookies";
+import { getPlanAmountUsd } from "@/lib/payments";
 
 export const runtime = "nodejs";
 
@@ -84,6 +86,8 @@ export async function POST(request: Request) {
       },
     });
 
+    const validatedReferral = await getValidatedReferralFromCookies(email);
+
     const metadata: Record<string, string> = {
       first_name: firstName,
       last_name: lastName,
@@ -91,7 +95,13 @@ export async function POST(request: Request) {
       plan_id: planId,
       plan_type: planConfig.plan,
       offer: planConfig.offer ?? "",
+      amount_paid_usd: String(getPlanAmountUsd(planId)),
     };
+
+    if (validatedReferral) {
+      metadata.referral_code = validatedReferral.referralCode;
+      metadata.referrer_user_id = validatedReferral.referrerUserId;
+    }
 
     // Existing registered users renew → login. New payers → protected register.
     const { data: paidRecord } = await supabase
@@ -120,7 +130,7 @@ export async function POST(request: Request) {
       customer: customer.id,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${siteUrl}${successBase}?${successQuery}`,
-      cancel_url: `${siteUrl}/?checkout=cancelled#pricing`,
+      cancel_url: `${siteUrl}/pricing?checkout=cancelled`,
       allow_promotion_codes: true,
       metadata,
       subscription_data: { metadata },

@@ -22,6 +22,8 @@ import {
 import { sanitizeFullName, isValidTransactionHash, normalizeTransactionHash } from "@/lib/crypto-sanitize";
 import { getOnchainProvider, verifyOnchainPayment } from "@/lib/crypto/onchain";
 import { sendCryptoPaymentReceivedEmail } from "@/lib/email/send-crypto-payment-emails";
+import { buildReferralPaidCustomerFields } from "@/lib/referrals";
+import { getValidatedReferralFromCookies } from "@/lib/referrals-cookies";
 
 export type IntentStatus = "pending" | "confirmed" | "expired" | "failed";
 
@@ -382,6 +384,15 @@ async function settlePaidCustomer(
     .eq("email", email)
     .maybeSingle();
 
+  const validatedReferral = await getValidatedReferralFromCookies(email);
+  const referralFields = await buildReferralPaidCustomerFields(
+    supabase,
+    validatedReferral
+      ? { referralCode: validatedReferral.referralCode, referrerUserId: validatedReferral.referrerUserId }
+      : null,
+    email,
+  );
+
   const paidPayload = {
     email,
     first_name: firstName,
@@ -393,6 +404,8 @@ async function settlePaidCustomer(
     paid_at: now,
     has_registered: existingPaid?.has_registered ?? Boolean(profile?.id),
     user_id: existingPaid?.user_id ?? profile?.id ?? null,
+    amount_paid_usd: Number(intent.expected_amount) || getCryptoExpectedAmountUsd(planId),
+    ...referralFields,
   };
 
   let paidId: string | null = null;

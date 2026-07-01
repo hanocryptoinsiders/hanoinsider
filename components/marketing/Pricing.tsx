@@ -16,7 +16,7 @@ const features = [
   "Full access to all insights and articles",
   "Market overview, coin pages, and charts",
   "Weekly insight briefs and monthly research",
-  "Direct member support and affiliate tools",
+  "Direct member support and referral rewards",
 ];
 
 function useCountdown() {

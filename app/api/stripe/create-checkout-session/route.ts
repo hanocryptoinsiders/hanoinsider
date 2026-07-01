@@ -58,22 +58,12 @@ export async function POST(request: Request) {
 
     const siteUrl = getSiteUrl();
 
-    // Check if the user has been referred by a friend to apply 10% off
-    const { data: referral } = await serviceClient
-      .from("referrals")
-      .select("id")
-      .eq("referred_user_id", user.id)
-      .eq("status", "signed_up")
-      .maybeSingle();
-
-    const couponId = process.env.STRIPE_REFERRAL_10_OFF_COUPON_ID;
-
-    const sessionParams: any = {
+    const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${siteUrl}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/?checkout=cancelled`,
+      cancel_url: `${siteUrl}/pricing?checkout=cancelled`,
       client_reference_id: user.id,
       allow_promotion_codes: true,
       metadata: {
@@ -88,13 +78,7 @@ export async function POST(request: Request) {
           offer: offer ?? "",
         },
       },
-    };
-
-    if (referral && couponId) {
-      sessionParams.discounts = [{ coupon: couponId }];
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    });
 
     return NextResponse.json({ url: session.url });
   } catch (error) {

@@ -39,7 +39,7 @@ const platformNav: NavItem[] = [
   { to: "/admin/notifications", icon: Bell, label: "Notifications" },
   { to: "/admin/support", icon: LifeBuoy, label: "Support tickets" },
   { to: "/admin/emails", icon: Mail, label: "Community email" },
-  { to: "/admin/affiliates", icon: Gift, label: "Affiliates" },
+  { to: "/admin/referrals", icon: Gift, label: "Referrals" },
 ];
 
 const deskNav: NavItem[] = [
@@ -54,7 +54,7 @@ const PAGE_META: Record<string, { title: string; sub?: string }> = {
   "/admin/notifications": { title: "Notifications", sub: "Broadcast alerts to members." },
   "/admin/support": { title: "Support tickets", sub: "Member help requests and replies." },
   "/admin/emails": { title: "Community email", sub: "Send updates to paid subscribers." },
-  "/admin/affiliates": { title: "Affiliates", sub: "Referral partners and payouts." },
+  "/admin/referrals": { title: "Referrals", sub: "Member referral rewards and payouts." },
   "/admin/quote": { title: "Desk quote", sub: "Dashboard hero voice and mascot." },
 };
 

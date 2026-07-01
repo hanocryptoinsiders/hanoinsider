@@ -3,7 +3,7 @@
 import { useSectionScroll } from "./useSectionScroll";
 
 const contentTags = [
-  "Dashboard", "Market overview", "Insights", "Articles", "Affiliate",
+  "Dashboard", "Market overview", "Insights", "Articles", "Referrals",
   "Coin pages", "Charts", "Weekly briefs", "Research reports",
   "Direct support", "Settings",
 ];

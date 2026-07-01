@@ -204,23 +204,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [supabase, fetchProfile, router, isPasswordRecoveryRoute]);
 
-  // Referral Signup Attribution
-  useEffect(() => {
-    if (user) {
-      const hasRefCookie = typeof document !== "undefined" && document.cookie.includes("hano_ref");
-      if (hasRefCookie) {
-        fetch("/api/referrals/signup", { method: "POST" })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success && data.attributed) {
-              console.log("[Auth] Referral signup attributed successfully");
-            }
-          })
-          .catch((err) => console.error("[Auth] Error attributing referral signup:", err));
-      }
-    }
-  }, [user]);
-
   // Mock Role Toggle (dev/demo)
   const setMockRole = (role: UserRole) => {
     setIsMockMode(true);
@@ -228,7 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.success(`Viewing as: ${role.toUpperCase()}`);
   };
 
-  // Sign Out
+  // Sign Out — clear server cookies, global client session, then hard-navigate
+  // so RSC cache and stale auth state cannot linger (fixes intermittent sign-out).
   const signOut = async () => {
     if (isMockMode) {
       setIsMockMode(false);
@@ -237,21 +221,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    setUser(null);
+    setProfile(null);
+
     try {
-      // Clear HTTP-only cookies on server first
-      await fetch("/api/auth/signout", { method: "POST" });
+      await fetch("/api/auth/signout", { method: "POST", credentials: "include" });
     } catch (err) {
       console.error("[auth-context] Server signout failed:", err);
     }
 
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast.error(error.message || "Sign out failed");
-      return;
+    try {
+      await supabase.auth.signOut({ scope: "global" });
+    } catch (err) {
+      console.error("[auth-context] Client signout failed:", err);
     }
-    // State is cleared by the onAuthStateChange SIGNED_OUT handler above
+
     toast.success("Signed out successfully");
-    router.push("/");
+    window.location.href = "/";
   };
 
   // Update Profile

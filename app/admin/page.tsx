@@ -54,7 +54,7 @@ async function AdminKPIs() {
     publishedInsights,
     publishedArticles,
     publishedVideos,
-    totalAffiliates,
+    totalReferrers,
     totalComments,
     openSupportTickets,
   ] = await Promise.all([
@@ -77,7 +77,7 @@ async function AdminKPIs() {
     runCount(supabase.from("content_items").select("id", { count: "exact", head: true }).eq("content_type", "insight").eq("status", "published")),
     runCount(supabase.from("content_items").select("id", { count: "exact", head: true }).eq("content_type", "article").eq("status", "published")),
     runCount(supabase.from("content_items").select("id", { count: "exact", head: true }).eq("content_type", "video").eq("status", "published")),
-    runCount(supabase.from("affiliates").select("id", { count: "exact", head: true })),
+    runCount(supabase.from("affiliates").select("id", { count: "exact", head: true }).not("user_id", "is", null)),
     runCount(supabase.from("content_comments").select("id", { count: "exact", head: true })),
     runCount(
       supabase
@@ -96,7 +96,7 @@ async function AdminKPIs() {
     { label: "Published insights", value: publishedInsights.toLocaleString(), change: "Insights in feed", icon: FileText, up: true },
     { label: "Published articles", value: publishedArticles.toLocaleString(), change: "Educational guides", icon: FileText, up: true },
     { label: "Published videos", value: publishedVideos.toLocaleString(), change: "Uploaded video guides", icon: Video, up: true },
-    { label: "Total affiliates", value: totalAffiliates.toLocaleString(), change: "Referral partners", icon: Gift, up: true },
+    { label: "Referral members", value: totalReferrers.toLocaleString(), change: "Members with referral links", icon: Gift, up: true },
     { label: "Total comments", value: totalComments.toLocaleString(), change: "Community comments", icon: MessageSquare, up: true },
     {
       label: "Open support tickets",

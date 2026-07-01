@@ -41,7 +41,7 @@ const deskNav: NavItem[] = [
 ];
 
 const memberNav: NavItem[] = [
-  { to: "/dashboard/affiliate", icon: UserPlus, label: "Affiliate" },
+  { to: "/dashboard/referrals", icon: UserPlus, label: "Referrals" },
   { to: "/dashboard/support", icon: Headphones, label: "Support" },
   { to: "/dashboard/settings", icon: Settings, label: "Settings" },
 ];
@@ -58,7 +58,7 @@ const PAGE_META: Record<string, { title: string; sub?: string }> = {
   "/dashboard/market": { title: "Market Overview", sub: "Live context across the category." },
   "/dashboard/insights": { title: "Insights", sub: "Educational briefs from the desk." },
   "/dashboard/articles": { title: "Articles", sub: "Short-form market analysis." },
-  "/dashboard/affiliate": { title: "Affiliate", sub: "Referrals and commission tracking." },
+  "/dashboard/referrals": { title: "Referrals", sub: "Share your link and track USDC rewards." },
   "/dashboard/support": { title: "Support", sub: "Member help and billing." },
   "/dashboard/settings": { title: "Settings", sub: "Account and preferences." },
 };

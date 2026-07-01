@@ -26,7 +26,7 @@ const DESK_PAGES: DeskSearchResult[] = [
   { id: "page-insights", title: "Insights", subtitle: "Educational briefs", href: "/dashboard/insights", type: "page" },
   { id: "page-articles", title: "Articles", subtitle: "Market analysis", href: "/dashboard/articles", type: "page" },
   { id: "page-videos", title: "Videos", subtitle: "Desk video library", href: "/dashboard/videos", type: "page" },
-  { id: "page-affiliate", title: "Affiliate", subtitle: "Referrals and commissions", href: "/dashboard/affiliate", type: "page" },
+  { id: "page-referrals", title: "Referrals", subtitle: "Share your link and track USDC rewards", href: "/dashboard/referrals", type: "page" },
   { id: "page-support", title: "Support", subtitle: "Member help", href: "/dashboard/support", type: "page" },
   { id: "page-settings", title: "Settings", subtitle: "Account preferences", href: "/dashboard/settings", type: "page" },
 ];

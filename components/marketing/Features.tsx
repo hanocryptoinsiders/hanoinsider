@@ -26,8 +26,8 @@ const featureItems: { icon: LucideIcon; title: string; desc: string }[] = [
   },
   {
     icon: Share2,
-    title: "Affiliate",
-    desc: "Share the desk and earn referral credit on every signup.",
+    title: "Referrals",
+    desc: "Share your link — earn $15 USDC on Base when friends pay and register.",
   },
   {
     icon: Headphones,

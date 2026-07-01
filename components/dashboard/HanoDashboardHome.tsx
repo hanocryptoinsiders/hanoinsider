@@ -93,7 +93,7 @@ export function HanoDashboardHome({ initialSnap }: { initialSnap: MarketSnapshot
 
         <aside className="dash-home-rail">
           <MascotCard />
-          <AffiliatePanel />
+          <ReferralPanel />
         </aside>
       </div>
     </div>
@@ -364,28 +364,28 @@ function ArticlesPanel() {
   );
 }
 
-function AffiliatePanel() {
+function ReferralPanel() {
   return (
     <div className="dash-card">
       <p className="dash-card-kicker">
         <span className="acc">Referrals</span>
       </p>
-      <h2 className="dash-card-title">Affiliate program</h2>
+      <h2 className="dash-card-title">Refer friends</h2>
       <p className="mt-2 font-serif text-sm italic text-[var(--fg-2)]">
-        Earn on every member you bring to the desk.
+        Earn $15 USDC on Base for each member who pays and registers through your link.
       </p>
       <div className="mt-5 grid grid-cols-2 gap-px border border-[var(--border)] bg-[var(--border)]">
         <div className="bg-[var(--bg-2)] p-4">
-          <div className="dash-stat-val text-[var(--accent-soft)]" style={{ fontSize: 22 }}>30%</div>
-          <div className="dash-stat-lbl">Commission</div>
+          <div className="dash-stat-val text-[var(--accent-soft)]" style={{ fontSize: 22 }}>$15</div>
+          <div className="dash-stat-lbl">Per referral</div>
         </div>
         <div className="bg-[var(--bg-2)] p-4">
-          <div className="dash-stat-val" style={{ fontSize: 22 }}>$1,250</div>
-          <div className="dash-stat-lbl">Earned</div>
+          <div className="dash-stat-val" style={{ fontSize: 22 }}>20%</div>
+          <div className="dash-stat-lbl">Friend reward</div>
         </div>
       </div>
-      <Link href="/dashboard/affiliate" className="dash-btn-secondary mt-5">
-        Open affiliate desk
+      <Link href="/dashboard/referrals" className="dash-btn-secondary mt-5">
+        Open referral desk
       </Link>
     </div>
   );

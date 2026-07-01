@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { normalizeEmail, isValidEmail, planToRole } from "@/lib/payments";
 import { hasPendingCryptoPayment } from "@/lib/crypto-payment-service";
+import { createReferralRewardsAfterRegistration } from "@/lib/referrals";
 
 export const runtime = "nodejs";
 
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
     const { data: paid, error: paidError } = await supabase
       .from("paid_customers")
       .select(
-        "id, first_name, last_name, selected_plan, stripe_customer_id, payment_status, has_registered, user_id, payment_provider",
+        "id, first_name, last_name, selected_plan, stripe_customer_id, payment_status, has_registered, user_id, payment_provider, referral_code, referrer_user_id, amount_paid_usd, stripe_checkout_session_id, crypto_payment_intent_id",
       )
       .eq("email", email)
       .maybeSingle();
@@ -161,6 +162,13 @@ export async function POST(request: Request) {
       .from("paid_customers")
       .update({ has_registered: true, user_id: userId })
       .eq("id", paid.id);
+
+    // 5b. Create referral rewards if this payment came through a referral link.
+    try {
+      await createReferralRewardsAfterRegistration(supabase, userId, paid);
+    } catch (referralError) {
+      console.error("[auth/register] referral rewards error:", referralError);
+    }
 
     // 6. Link Stripe subscription snapshot if migration 012 columns exist (optional).
     const { data: paidExtras, error: extrasError } = await supabase

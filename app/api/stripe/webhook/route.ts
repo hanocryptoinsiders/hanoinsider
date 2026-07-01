@@ -4,6 +4,8 @@ import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { sendWelcomeEmailIfNeeded } from "@/lib/email/send-welcome";
 import { normalizeEmail } from "@/lib/payments";
+import { getPlanAmountUsd, isPlanId } from "@/lib/payments";
+import { buildReferralPaidCustomerFields } from "@/lib/referrals";
 
 export const runtime = "nodejs";
 
@@ -84,7 +86,6 @@ export async function POST(request: Request) {
       }
 
       case "invoice.paid": {
-        await handleAffiliateCommission(supabase, event.data.object as Stripe.Invoice, event);
         break;
       }
 
@@ -123,6 +124,24 @@ async function recordPaidCustomer(supabase: SB, session: Stripe.Checkout.Session
 
   const isPaid = session.payment_status === "paid" || session.payment_status === "no_payment_required";
 
+  const planId = meta.plan_id || meta.plan_type || null;
+  let amountPaidUsd: number | null = null;
+  if (typeof session.amount_total === "number" && session.amount_total > 0) {
+    amountPaidUsd = session.amount_total / 100;
+  } else if (planId && isPlanId(planId)) {
+    amountPaidUsd = getPlanAmountUsd(planId);
+  } else if (meta.amount_paid_usd) {
+    amountPaidUsd = parseFloat(meta.amount_paid_usd);
+  }
+
+  const referralFields = await buildReferralPaidCustomerFields(
+    supabase,
+    meta.referral_code && meta.referrer_user_id
+      ? { referralCode: meta.referral_code, referrerUserId: meta.referrer_user_id }
+      : null,
+    email,
+  );
+
   const { data: existing } = await supabase
     .from("paid_customers")
     .select("id, has_registered")
@@ -138,6 +157,8 @@ async function recordPaidCustomer(supabase: SB, session: Stripe.Checkout.Session
     stripe_checkout_session_id: session.id,
     payment_status: isPaid ? "paid" : session.payment_status ?? "pending",
     paid_at: isPaid ? new Date().toISOString() : null,
+    amount_paid_usd: amountPaidUsd,
+    ...referralFields,
   };
 
   if (existing) {
@@ -307,82 +328,4 @@ function inferPlanType(interval?: string | null) {
   if (interval === "year") return "yearly";
   if (interval === "month") return "monthly";
   return null;
-}
-
-async function handleAffiliateCommission(supabase: SB, invoice: Stripe.Invoice, event: Stripe.Event) {
-  const inv = invoice as any;
-  const subscriptionId =
-    typeof inv.subscription === "string"
-      ? inv.subscription
-      : inv.subscription?.id;
-  const paymentId =
-    typeof inv.payment_intent === "string"
-      ? inv.payment_intent
-      : inv.payment_intent?.id || invoice.id;
-
-  if (!subscriptionId || !paymentId || !inv.paid) return;
-
-  const { data: subscriptionRow } = await supabase
-    .from("subscriptions")
-    .select("user_id")
-    .eq("provider_subscription_id", subscriptionId)
-    .maybeSingle();
-
-  const userId = subscriptionRow?.user_id;
-  if (!userId) return;
-
-  const { data: referral } = await supabase
-    .from("referrals")
-    .select("id, affiliate_id, status")
-    .eq("referred_user_id", userId)
-    .maybeSingle();
-
-  if (!referral) return;
-
-  const { data: existingCommission } = await supabase
-    .from("affiliate_commissions")
-    .select("id")
-    .eq("provider_payment_id", paymentId)
-    .maybeSingle();
-
-  if (existingCommission) return;
-
-  const { data: affiliate } = await supabase
-    .from("affiliates")
-    .select("commission_rate, status")
-    .eq("id", referral.affiliate_id)
-    .single();
-
-  if (!affiliate || affiliate.status !== "active") return;
-
-  if (referral.status === "signed_up") {
-    await supabase
-      .from("referrals")
-      .update({
-        status: "converted",
-        converted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", referral.id);
-  }
-
-  const paymentAmount = (invoice.amount_paid ?? 0) / 100;
-  const commissionRate = affiliate.commission_rate ?? 0;
-  const payableAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  await supabase.from("affiliate_commissions").insert({
-    affiliate_id: referral.affiliate_id,
-    referred_user_id: userId,
-    referral_id: referral.id,
-    provider: "stripe",
-    provider_payment_id: paymentId,
-    provider_subscription_id: subscriptionId,
-    payment_amount: paymentAmount,
-    payment_currency: invoice.currency?.toUpperCase() || "USD",
-    commission_rate: commissionRate,
-    commission_amount: paymentAmount * commissionRate,
-    status: "pending",
-    payable_at: payableAt,
-    raw_payload: event,
-  });
 }
