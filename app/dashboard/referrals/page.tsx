@@ -73,7 +73,7 @@ async function ReferralDataFetcher() {
     ? await supabase.from("referral_clicks").select("id").eq("affiliate_id", affiliateRow.id)
     : { data: [] };
 
-  const { data: rewardsData } = await supabase
+  const { data: referrerRewardsData } = await supabase
     .from("referral_rewards")
     .select(`
       id,
@@ -91,26 +91,25 @@ async function ReferralDataFetcher() {
       profiles!referred_user_id ( full_name, email )
     `)
     .eq("referrer_user_id", user.id)
+    .eq("reward_type", "referrer_fixed")
     .order("created_at", { ascending: false });
 
-  const conversions = (rewardsData ?? [])
-    .filter((r: Record<string, unknown>) => r.reward_type === "referrer_fixed")
-    .map((r: Record<string, unknown>) => {
-      const p = r.profiles as { full_name?: string; email?: string } | null;
-      return {
-        id: String(r.id),
-        referred_name: p?.full_name ?? null,
-        referred_email: p?.email ?? null,
-        selected_plan: (r.package_id as string) ?? null,
-        package_amount_paid: parseFloat(String(r.package_amount_paid ?? 0)),
-        registered_at: (r.paid_at as string) ?? null,
-        created_at: String(r.created_at),
-      };
-    });
+  const conversions = (referrerRewardsData ?? []).map((r: Record<string, unknown>) => {
+    const p = r.profiles as { full_name?: string; email?: string } | null;
+    return {
+      id: String(r.id),
+      referred_name: p?.full_name ?? null,
+      referred_email: p?.email ?? null,
+      selected_plan: (r.package_id as string) ?? null,
+      package_amount_paid: parseFloat(String(r.package_amount_paid ?? 0)),
+      registered_at: (r.paid_at as string) ?? null,
+      created_at: String(r.created_at),
+    };
+  });
 
-  const rewards = (rewardsData ?? []).map((r: Record<string, unknown>) => ({
+  const referrerRewards = (referrerRewardsData ?? []).map((r: Record<string, unknown>) => ({
     id: String(r.id),
-    reward_type: r.reward_type === "referrer_fixed" ? ("referrer" as const) : ("referred" as const),
+    reward_type: "referrer" as const,
     amount: parseFloat(String(r.reward_amount ?? 0)),
     currency: String(r.reward_currency ?? "USDC"),
     network: String(r.reward_network ?? "Base"),
@@ -120,26 +119,28 @@ async function ReferralDataFetcher() {
     created_at: String(r.created_at),
   }));
 
-  const { data: referredRewards } = await supabase
+  const { data: signupBonusData } = await supabase
     .from("referral_rewards")
-    .select("id, reward_type, reward_amount, reward_currency, reward_network, status, transaction_hash, paid_at, created_at")
+    .select("id, reward_type, reward_amount, reward_currency, reward_network, status, transaction_hash, paid_at, created_at, package_id, package_amount_paid")
     .eq("referred_user_id", user.id)
-    .order("created_at", { ascending: false });
+    .eq("reward_type", "referred_cashback")
+    .order("created_at", { ascending: false })
+    .limit(1);
 
-  const allRewards = [
-    ...rewards,
-    ...(referredRewards ?? []).map((r) => ({
-      id: r.id,
-      reward_type: r.reward_type === "referrer_fixed" ? ("referrer" as const) : ("referred" as const),
-      amount: parseFloat(String(r.reward_amount ?? 0)),
-      currency: r.reward_currency ?? "USDC",
-      network: r.reward_network ?? "Base",
-      status: r.status,
-      transaction_hash: r.transaction_hash,
-      completed_at: r.paid_at,
-      created_at: r.created_at,
-    })),
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const signupBonus = signupBonusData?.[0]
+    ? {
+        id: signupBonusData[0].id,
+        reward_type: "referred" as const,
+        amount: parseFloat(String(signupBonusData[0].reward_amount ?? 0)),
+        currency: signupBonusData[0].reward_currency ?? "USDC",
+        network: signupBonusData[0].reward_network ?? "Base",
+        status: signupBonusData[0].status,
+        transaction_hash: signupBonusData[0].transaction_hash,
+        completed_at: signupBonusData[0].paid_at,
+        created_at: signupBonusData[0].created_at,
+        package_amount_paid: parseFloat(String(signupBonusData[0].package_amount_paid ?? 0)),
+      }
+    : null;
 
   return (
     <ReferralDashboardClient
@@ -147,7 +148,8 @@ async function ReferralDataFetcher() {
       walletAddress={walletAddress}
       clicksCount={clicks?.length ?? 0}
       conversions={conversions}
-      rewards={allRewards}
+      referrerRewards={referrerRewards}
+      signupBonus={signupBonus}
     />
   );
 }

@@ -9,6 +9,7 @@ import {
   MousePointerClick,
   Check,
   Wallet,
+  Gift,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/DashboardLayout";
 import { toast } from "sonner";
@@ -36,12 +37,39 @@ export type ClientReferralReward = {
   created_at: string;
 };
 
+export type ClientSignupBonus = ClientReferralReward & {
+  package_amount_paid: number;
+};
+
 interface ReferralDashboardClientProps {
   referralCode: string;
   walletAddress: string | null;
   clicksCount: number;
   conversions: ClientReferralConversion[];
-  rewards: ClientReferralReward[];
+  referrerRewards: ClientReferralReward[];
+  signupBonus: ClientSignupBonus | null;
+}
+
+function sumRewards(rewards: ClientReferralReward[], status: string) {
+  return rewards
+    .filter((r) => r.status === status)
+    .reduce((sum, r) => sum + r.amount, 0);
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={`text-[9px] uppercase font-semibold px-2 py-0.5 rounded ${
+        status === "completed"
+          ? "bg-success/10 text-success"
+          : status === "cancelled"
+            ? "bg-destructive/10 text-destructive"
+            : "bg-secondary text-muted-foreground"
+      }`}
+    >
+      {status}
+    </span>
+  );
 }
 
 export default function ReferralDashboardClient({
@@ -49,7 +77,8 @@ export default function ReferralDashboardClient({
   walletAddress: initialWallet,
   clicksCount,
   conversions,
-  rewards,
+  referrerRewards,
+  signupBonus,
 }: ReferralDashboardClientProps) {
   const [copied, setCopied] = useState(false);
   const [walletAddress, setWalletAddress] = useState(initialWallet ?? "");
@@ -64,10 +93,8 @@ export default function ReferralDashboardClient({
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const pendingRewards = rewards.filter((r) => r.status === "pending");
-  const completedRewards = rewards.filter((r) => r.status === "completed");
-  const pendingTotal = pendingRewards.reduce((sum, r) => sum + r.amount, 0);
-  const paidTotal = completedRewards.reduce((sum, r) => sum + r.amount, 0);
+  const pendingReferralEarnings = sumRewards(referrerRewards, "pending");
+  const paidReferralEarnings = sumRewards(referrerRewards, "completed");
 
   const handleSaveWallet = async () => {
     setSavingWallet(true);
@@ -92,14 +119,15 @@ export default function ReferralDashboardClient({
     { icon: Users, label: "SUCCESSFUL REFERRALS", value: conversions.length.toLocaleString() },
     {
       icon: DollarSign,
-      label: "PENDING REWARDS",
-      value: `$${pendingTotal.toFixed(2)} USDC`,
+      label: "REFERRAL EARNINGS (PENDING)",
+      value: `$${pendingReferralEarnings.toFixed(2)} USDC`,
       highlight: true,
+      hint: "$15 per friend who pays & registers",
     },
     {
       icon: DollarSign,
-      label: "PAID REWARDS",
-      value: `$${paidTotal.toFixed(2)} USDC`,
+      label: "REFERRAL EARNINGS (PAID)",
+      value: `$${paidReferralEarnings.toFixed(2)} USDC`,
       success: true,
     },
   ];
@@ -109,8 +137,31 @@ export default function ReferralDashboardClient({
       <PageHeader
         kicker="REFERRALS"
         title="Share Hano Insiders."
-        desc="Share your link. Friends pay full price first, then register. You earn $15 USDC on Base per referral; they earn 20% back."
+        desc="You earn $15 USDC on Base for each friend who pays and registers through your link. They get 20% back separately — not from your earnings."
       />
+
+      {signupBonus && (
+        <section className="panel p-5 mt-0 mb-6 border border-[oklch(0.78_0.14_85/0.35)] bg-[oklch(0.78_0.14_85/0.08)]">
+          <div className="flex items-start gap-3">
+            <Gift className="h-5 w-5 text-[oklch(0.78_0.14_85)] shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">Your signup bonus (20% back)</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                You joined through a referral link. This is <strong>your</strong> cashback — separate from referral earnings you earn by sharing your link.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                <span className="font-display text-xl text-[oklch(0.78_0.14_85)]">
+                  ${signupBonus.amount.toFixed(2)} {signupBonus.currency}
+                </span>
+                <StatusBadge status={signupBonus.status} />
+                <span className="text-[10px] text-muted-foreground">
+                  20% of ${signupBonus.package_amount_paid.toFixed(2)} plan · paid manually on {signupBonus.network}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="panel p-6">
         <p className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
@@ -137,7 +188,7 @@ export default function ReferralDashboardClient({
           </button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-2">
-          Link sends friends to pricing first. No checkout discount — rewards are paid after payment and registration.
+          Friends pay full price first, then register. You receive $15 USDC per successful referral after admin payout.
         </p>
       </section>
 
@@ -177,6 +228,9 @@ export default function ReferralDashboardClient({
               >
                 {s.value}
               </p>
+              {"hint" in s && s.hint ? (
+                <p className="text-[9px] text-muted-foreground mt-1">{s.hint}</p>
+              ) : null}
             </div>
           );
         })}
@@ -185,7 +239,7 @@ export default function ReferralDashboardClient({
       <div className="grid lg:grid-cols-2 gap-6 mt-6">
         <section className="panel p-6 overflow-x-auto">
           <p className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase border-b border-border pb-3 mb-4">
-            Referrals ({conversions.length})
+            People you referred ({conversions.length})
           </p>
           <table className="w-full text-xs text-left">
             <thead>
@@ -199,7 +253,7 @@ export default function ReferralDashboardClient({
               {conversions.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="py-8 text-center text-muted-foreground">
-                    No successful referrals yet.
+                    No successful referrals yet. Share your link to earn $15 per signup.
                   </td>
                 </tr>
               ) : (
@@ -218,43 +272,36 @@ export default function ReferralDashboardClient({
         </section>
 
         <section className="panel p-6 overflow-x-auto">
-          <p className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase border-b border-border pb-3 mb-4">
-            Your rewards ({rewards.length})
+          <p className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase border-b border-border pb-3 mb-1">
+            Your $15 referral earnings ({referrerRewards.length})
+          </p>
+          <p className="text-[10px] text-muted-foreground mb-4">
+            One $15 reward per friend who pays and registers — not combined with their 20% bonus.
           </p>
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="text-muted-foreground uppercase tracking-wider text-[9px] border-b border-border">
-                <th className="pb-2">Type</th>
+                <th className="pb-2">Reward</th>
                 <th className="pb-2">Amount</th>
                 <th className="pb-2 text-right">Status</th>
               </tr>
             </thead>
             <tbody>
-              {rewards.length === 0 ? (
+              {referrerRewards.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="py-8 text-center text-muted-foreground">
-                    Rewards appear here after referred members pay and register.
+                    Referral earnings appear here after someone uses your link, pays, and registers.
                   </td>
                 </tr>
               ) : (
-                rewards.map((r) => (
+                referrerRewards.map((r) => (
                   <tr key={r.id} className="border-b border-border/40 last:border-0">
-                    <td className="py-3 capitalize">{r.reward_type}</td>
+                    <td className="py-3">Referral bonus</td>
                     <td className="py-3 font-semibold">
                       ${r.amount.toFixed(2)} {r.currency}
                     </td>
                     <td className="py-3 text-right">
-                      <span
-                        className={`text-[9px] uppercase font-semibold px-2 py-0.5 rounded ${
-                          r.status === "completed"
-                            ? "bg-success/10 text-success"
-                            : r.status === "cancelled"
-                              ? "bg-destructive/10 text-destructive"
-                              : "bg-secondary text-muted-foreground"
-                        }`}
-                      >
-                        {r.status}
-                      </span>
+                      <StatusBadge status={r.status} />
                     </td>
                   </tr>
                 ))

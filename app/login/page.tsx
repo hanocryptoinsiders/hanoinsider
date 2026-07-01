@@ -12,7 +12,7 @@ import { Loader2, Eye, EyeOff, ShieldCheck, AlertCircle } from "lucide-react";
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading, isPremium } = useAuth();
+  const { user, isLoading, isPremium, loadProfile } = useAuth();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
@@ -103,6 +103,11 @@ function LoginContent() {
     }
 
     toast.success("Welcome back!");
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      await loadProfile(authUser);
+    }
+    router.refresh();
     router.replace("/dashboard");
   };
 

@@ -46,6 +46,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   updateProfile: (data: { full_name?: string; email?: string }) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  loadProfile: (authUser?: User | null) => Promise<void>;
   grantPremium: () => void;
 };
 
@@ -170,15 +171,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === "SIGNED_IN" && session?.user) {
           const authUser = session.user;
           setUser(authUser);
-          setIsLoading(false);
           if (isPasswordRecoveryRoute) {
             setProfile(null);
+            setIsLoading(false);
             return;
           }
-          runDeferred(async () => {
-            await fetchProfile(authUser); // pass user directly no stale state
+          void (async () => {
+            await fetchProfile(authUser);
+            if (!mounted) return;
+            setIsLoading(false);
             router.refresh();
-          });
+          })();
         } else if (event === "SIGNED_OUT") {
           setUser(null);
           setProfile(null);
@@ -275,6 +278,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, fetchProfile]);
 
+  const loadProfile = useCallback(
+    async (authUser?: User | null) => {
+      const target = authUser ?? user;
+      if (!target) return;
+      await fetchProfile(target);
+    },
+    [user, fetchProfile],
+  );
+
   // Grant Premium (Optimistic)
   // Instantly switches the client-side profile to premium without waiting for
   // a DB re-fetch. Used by the checkout handler after verify-payment succeeds.
@@ -318,6 +330,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         updateProfile,
         refreshProfile,
+        loadProfile,
         grantPremium,
       }}
     >

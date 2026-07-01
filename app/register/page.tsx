@@ -67,7 +67,7 @@ async function fetchEligibility(trimmed: string): Promise<Eligibility> {
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, loadProfile } = useAuth();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
@@ -277,9 +277,10 @@ function RegisterContent() {
                 router.replace("/login");
                 return;
               }
-            } else {
-              router.refresh();
             }
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (authUser) await loadProfile(authUser);
+            router.refresh();
             toast.success("Welcome to Hano Insiders!");
             router.replace("/dashboard");
             return;
@@ -315,9 +316,11 @@ function RegisterContent() {
           router.replace("/login");
           return;
         }
-      } else {
-        router.refresh();
       }
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) await loadProfile(authUser);
+      router.refresh();
 
       toast.success("Welcome to Hano Insiders!");
       router.replace("/dashboard");
