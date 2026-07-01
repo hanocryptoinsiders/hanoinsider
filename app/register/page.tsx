@@ -18,12 +18,36 @@ async function confirmCheckoutSession(sessionId: string, email?: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sessionId, email: email || undefined }),
   });
-  return res.json() as Promise<{
+  return parseApiJson<{
     success?: boolean;
     email?: string;
     registrationStatus?: "eligible" | "already_registered" | "not_paid";
     error?: string;
-  }>;
+    code?: string;
+  }>(res);
+}
+
+async function parseApiJson<T extends Record<string, unknown>>(res: Response) {
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    return {
+      _httpStatus: res.status,
+      _parseError: true as const,
+      error: res.status >= 500
+        ? "Server error — registration API is down. Please try again in a minute or contact support."
+        : "Unexpected server response. Please try again.",
+    };
+  }
+  try {
+    const payload = (await res.json()) as T;
+    return { ...payload, _httpStatus: res.status, _parseError: false as const };
+  } catch {
+    return {
+      _httpStatus: res.status,
+      _parseError: true as const,
+      error: "Registration failed. Please try again.",
+    };
+  }
 }
 
 async function fetchEligibility(trimmed: string): Promise<Eligibility> {
@@ -79,16 +103,16 @@ function RegisterContent() {
       for (let attempt = 0; attempt < 8 && !cancelled; attempt++) {
         try {
           const data = await confirmCheckoutSession(sessionId, confirmedEmail || undefined);
-          if (data.email) {
+          if (!data._parseError && data.email) {
             confirmedEmail = data.email;
             setEmail(data.email);
           }
-          if (data.registrationStatus === "eligible") {
+          if (!data._parseError && data.registrationStatus === "eligible") {
             setEligibility("eligible");
             confirmingSessionRef.current = false;
             return;
           }
-          if (data.registrationStatus === "already_registered") {
+          if (!data._parseError && data.registrationStatus === "already_registered") {
             setEligibility("already_registered");
             confirmingSessionRef.current = false;
             return;
@@ -215,11 +239,15 @@ function RegisterContent() {
         }),
       });
 
-      let data: { error?: string; code?: string; success?: boolean; sessionEstablished?: boolean } = {};
-      try {
-        data = await res.json();
-      } catch {
-        setFormError("Registration failed. Please try again.");
+      let data = await parseApiJson<{
+        error?: string;
+        code?: string;
+        success?: boolean;
+        sessionEstablished?: boolean;
+      }>(res);
+
+      if (data._parseError) {
+        setFormError(data.error || "Registration failed. Please try again.");
         setIsSubmitting(false);
         return;
       }
@@ -232,11 +260,9 @@ function RegisterContent() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: normalizedEmail, password, sessionId }),
           });
-          let retryData: typeof data = {};
-          try {
-            retryData = await retry.json();
-          } catch {
-            setFormError("Registration failed. Please try again.");
+          const retryData = await parseApiJson<typeof data>(retry);
+          if (retryData._parseError) {
+            setFormError(retryData.error || "Registration failed. Please try again.");
             setIsSubmitting(false);
             return;
           }

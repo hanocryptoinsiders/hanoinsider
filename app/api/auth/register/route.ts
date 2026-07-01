@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { normalizeEmail, isValidEmail, planToRole } from "@/lib/payments";
-import { hasPendingCryptoPayment } from "@/lib/crypto-payment-service";
+import { hasPendingCryptoPayment } from "@/lib/registration-eligibility";
 import { createReferralRewardsAfterRegistration } from "@/lib/referrals";
 import { confirmStripeCheckoutSession } from "@/lib/stripe/paid-customer";
 
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     const { data: paid, error: paidError } = await supabase
       .from("paid_customers")
       .select(
-        "id, first_name, last_name, selected_plan, stripe_customer_id, payment_status, has_registered, user_id, payment_provider, referral_code, referrer_user_id, amount_paid_usd, stripe_checkout_session_id, crypto_payment_intent_id",
+        "id, email, first_name, last_name, selected_plan, stripe_customer_id, payment_status, has_registered, user_id, payment_provider, referral_code, referrer_user_id, amount_paid_usd, stripe_checkout_session_id, crypto_payment_intent_id",
       )
       .eq("email", email)
       .maybeSingle();

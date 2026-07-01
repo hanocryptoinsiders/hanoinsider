@@ -418,14 +418,6 @@ export async function rejectCryptoPayment(
 }
 
 export async function hasPendingCryptoPayment(email: string): Promise<boolean> {
-  const supabase = getServiceSupabase();
-  const normalized = normalizeEmail(email);
-  const { data } = await supabase
-    .from("manual_crypto_payments")
-    .select("id")
-    .eq("email", normalized)
-    .eq("status", "pending")
-    .limit(1)
-    .maybeSingle();
-  return Boolean(data);
+  const { hasPendingCryptoPayment: check } = await import("@/lib/registration-eligibility");
+  return check(email);
 }

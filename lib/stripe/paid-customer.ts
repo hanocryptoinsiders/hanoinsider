@@ -31,7 +31,9 @@ export async function recordPaidCustomerFromCheckoutSession(
     typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
 
   const isPaid =
-    session.payment_status === "paid" || session.payment_status === "no_payment_required";
+    session.payment_status === "paid" ||
+    session.payment_status === "no_payment_required" ||
+    session.status === "complete";
 
   const planId = meta.plan_id || meta.plan_type || null;
   let amountPaidUsd: number | null = null;
@@ -72,7 +74,11 @@ export async function recordPaidCustomerFromCheckoutSession(
   };
 
   if (existing) {
-    await supabase.from("paid_customers").update(base).eq("id", existing.id);
+    const { error } = await supabase.from("paid_customers").update(base).eq("id", existing.id);
+    if (error) {
+      console.error("[stripe/paid-customer] update failed:", error.message, session.id);
+      return null;
+    }
     return {
       email,
       isPaid,
@@ -80,7 +86,11 @@ export async function recordPaidCustomerFromCheckoutSession(
     };
   }
 
-  await supabase.from("paid_customers").insert({ ...base, has_registered: false });
+  const { error } = await supabase.from("paid_customers").insert({ ...base, has_registered: false });
+  if (error) {
+    console.error("[stripe/paid-customer] insert failed:", error.message, session.id);
+    return null;
+  }
   return { email, isPaid, hasRegistered: false };
 }
 
