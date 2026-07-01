@@ -57,7 +57,7 @@ Set these in `.env.local` for local dev and in your host (Vercel) for production
 
 | Variable | Purpose | Example / default |
 |---|---|---|
-| `ALCHEMY_API_KEY` | On-chain reader (free, **required**). BNB Smart Chain app. | `CPqCNMuNy6JPGwoaJIGwW` |
+| `ALCHEMY_API_KEY` | On-chain reader (free, **required**). BNB Smart Chain app. | *(secret — set in env, never commit)* |
 | `CRYPTO_RECEIVING_WALLET` | Wallet that receives payments (EVM `0x…`) | `0x1b9b412726fb86eef215eb4ec9cef58a095fdc38` |
 | `CRYPTO_PRICE_USD_OVERRIDE` | **Test mode** — flat amount for crypto. Remove for real prices. | `0.1` |
 | `CRYPTO_AMOUNT_TOLERANCE_USD` | Accept up to this much under the amount (bridge/exchange fees). Overpay always OK. | `0.5` |
@@ -70,9 +70,10 @@ Set these in `.env.local` for local dev and in your host (Vercel) for production
 | `SUPABASE_SERVICE_ROLE_KEY` | Server DB writes (**secret**, never commit) | `sb_secret_…` |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase client | — |
 
-> **Our Alchemy API key:** `CPqCNMuNy6JPGwoaJIGwW`
-> (BNB Smart Chain Mainnet app — created at https://dashboard.alchemy.com).
-> To get a new one: Alchemy → Create App → network **BNB Smart Chain → Mainnet** → copy the API Key.
+> **Alchemy key** is a **secret** — store it only in your host's environment
+> variables (Vercel) and in local `.env.local`. Never commit it.
+> To create one: https://dashboard.alchemy.com → **Create App** → network
+> **BNB Smart Chain → Mainnet** → copy the **API Key** → set it as `ALCHEMY_API_KEY`.
 
 ### How to change the **wallet address**
 
