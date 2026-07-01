@@ -33,11 +33,11 @@
   --color-success: var(--success);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
-  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --font-serif: 'IBM Plex Serif', 'Charter', Georgia, serif;
-  --font-hero-serif: 'Cormorant Garamond', 'IBM Plex Serif', Georgia, serif;
+  --font-display: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: var(--font-ibm-mono), ui-monospace, Menlo, monospace;
+  --font-serif: var(--font-ibm-serif), 'Charter', Georgia, serif;
+  --font-hero-serif: var(--font-cormorant), var(--font-ibm-serif), Georgia, serif;
 }
 
 :root {
@@ -432,15 +432,37 @@
   }
   @media (max-width: 640px) { .landing-main { padding: 0 20px; } }
   .landing-section {
-    padding: 6rem 0;
+    padding: 4.75rem 0;
     border-bottom: 1px solid var(--border);
   }
   @media (max-width: 640px) { .landing-section { padding: 4rem 0; } }
 
   .section-divider { border-top: 1px solid var(--border); }
-  .section-pad { padding-top: 7rem; padding-bottom: 7rem; }
+  .section-pad { padding-top: 5.5rem; padding-bottom: 5.5rem; }
   @media (min-width: 768px) {
-    .section-pad { padding-top: 9rem; padding-bottom: 9rem; }
+    .section-pad { padding-top: 6.5rem; padding-bottom: 6.5rem; }
+
+    .landing-section { padding: 4.25rem 0; }
+
+    .hero-section {
+      padding-top: 3.75rem;
+      padding-bottom: 4.25rem;
+      min-height: clamp(460px, 62vh, 700px);
+    }
+    .hero-section .eyebrow { margin-bottom: 24px; }
+    h1.hero-headline { margin-bottom: 22px; }
+    .hero-stand { margin-bottom: 28px; }
+    .hero-trust-row { margin-bottom: 28px; }
+
+    .hero-video-section { padding: 3.75rem 0 4.25rem; }
+    .hero-video-stand { margin-bottom: 28px; }
+
+    .sec-head { margin-bottom: 36px; }
+    .pricing-header { margin-bottom: 36px; }
+    .pricing-countdown { margin-bottom: 36px; }
+
+    .argument,
+    .argument--pin { gap: 48px; }
   }
 
   /*  MARKETING: EYEBROW  */
@@ -482,13 +504,13 @@
 
   .hero-section {
     position: relative;
-    padding: 5rem 32px 6rem;
+    padding: 4rem 32px 4.5rem;
     border-bottom: 1px solid var(--border);
     overflow: hidden;
     isolation: isolate;
     margin-left: -32px;
     margin-right: -32px;
-    min-height: clamp(520px, 72vh, 820px);
+    min-height: clamp(480px, 64vh, 720px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -573,7 +595,7 @@
   /*  MARKETING: HERO VIDEO  */
 
   .hero-video-section {
-    padding: 5rem 0 6rem;
+    padding: 4rem 0 4.5rem;
     border-bottom: 1px solid var(--border);
   }
   @media (max-width: 640px) { .hero-video-section { padding: 3.75rem 0 4rem; } }
@@ -3507,19 +3529,32 @@
 
 /*  OPTIMIZATIONS  */
 
-/*  LANDING — MOBILE PREMIUM (≤767px only; desktop untouched)  */
+/*  LANDING — GLOBAL PREMIUM ANIMATIONS  */
+@keyframes mHeroFadeUp {
+  from { opacity: 0; transform: translate3d(0, 22px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.landing-root [data-m-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  filter: blur(6px);
+  transition: opacity 0.75s var(--ease-out), transform 0.75s var(--ease-out), filter 0.75s var(--ease-out);
+  transition-delay: calc(var(--m-reveal-delay, 0) * 90ms);
+  will-change: opacity, transform, filter;
+}
+.landing-root [data-m-reveal].m-in-view {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: blur(0);
+}
+.landing-root .hero-section .eyebrow { animation: mHeroFadeUp 0.85s var(--ease-out) 0.05s both; }
+.landing-root h1.hero-headline { animation: mHeroFadeUp 0.9s var(--ease-out) 0.14s both; }
+.landing-root .hero-stand { animation: mHeroFadeUp 0.9s var(--ease-out) 0.24s both; }
+.landing-root .hero-trust-row { animation: mHeroFadeUp 0.9s var(--ease-out) 0.3s both; }
+.landing-root .hero-section .cta-row { animation: mHeroFadeUp 0.9s var(--ease-out) 0.36s both; }
 
+/*  LANDING — MOBILE PREMIUM (≤767px only; desktop untouched)  */
 @media (max-width: 767px) {
-  @keyframes mHeroFadeUp {
-    from {
-      opacity: 0;
-      transform: translate3d(0, 22px, 0);
-    }
-    to {
-      opacity: 1;
-      transform: translate3d(0, 0, 0);
-    }
-  }
   @keyframes mGlowPulse {
     0%, 100% { opacity: 0.55; transform: translateX(-50%) scale(1); }
     50% { opacity: 0.85; transform: translateX(-50%) scale(1.04); }
@@ -3562,28 +3597,9 @@
     position: relative;
     z-index: 2;
   }
-
-  /* scroll reveal */
-  .landing-root [data-m-reveal] {
-    opacity: 0;
-    transform: translate3d(0, 28px, 0);
-    filter: blur(6px);
-    transition:
-      opacity 0.75s var(--ease-out),
-      transform 0.75s var(--ease-out),
-      filter 0.75s var(--ease-out);
-    transition-delay: calc(var(--m-reveal-delay, 0) * 90ms);
-    will-change: opacity, transform, filter;
-  }
-  .landing-root [data-m-reveal].m-in-view {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-    filter: blur(0);
-  }
-
-  /* topbar — floating liquid glass pill, scrolls with page (mobile landing only) */
+  /* topbar — dark glassmorphism pill, fixed on scroll (mobile landing) */
   .landing-root .topbar {
-    position: absolute;
+    position: fixed;
     top: calc(12px + env(safe-area-inset-top, 0px));
     left: 16px;
     right: 16px;
@@ -3592,17 +3608,50 @@
     box-sizing: border-box;
     padding: 8px 12px;
     border-radius: 999px;
-    overflow: visible;
-    z-index: 10;
-    background: rgba(18, 18, 22, 0.55);
-    backdrop-filter: blur(22px) saturate(1.65);
-    -webkit-backdrop-filter: blur(22px) saturate(1.65);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    z-index: 60;
+    isolation: isolate;
+    background:
+      linear-gradient(
+        145deg,
+        rgba(6, 4, 10, 0.94) 0%,
+        rgba(4, 3, 8, 0.92) 48%,
+        rgba(5, 4, 10, 0.95) 100%
+      );
+    backdrop-filter: blur(32px) saturate(1.2) brightness(0.72);
+    -webkit-backdrop-filter: blur(32px) saturate(1.2) brightness(0.72);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.38),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+      0 12px 44px rgba(0, 0, 0, 0.65),
+      0 2px 10px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  }
+  .landing-root .topbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 90% 120% at 18% -40%, rgba(155, 130, 220, 0.06) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 80% at 92% 120%, rgba(32, 10, 74, 0.12) 0%, transparent 50%);
+    opacity: 0.85;
+    z-index: 0;
+  }
+  .landing-root .topbar::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.005) 38%,
+      transparent 100%
+    );
+    z-index: 0;
   }
   .landing-root .topbar-inner {
     width: 100%;
@@ -3613,6 +3662,8 @@
     gap: 10px;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+    z-index: 1;
   }
   .landing-root .topbar-logo-link {
     display: inline-flex;
@@ -3657,12 +3708,14 @@
     letter-spacing: 0.14em;
     white-space: nowrap;
     flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.72);
     transition: color 0.2s, transform 0.2s;
   }
   .landing-root .topbar-action:active {
     transform: scale(0.97);
     background: none;
     border: none;
+    color: rgba(255, 255, 255, 0.92);
   }
   .landing-root .topbar-action.topbar-action--plain {
     height: auto;
@@ -3694,7 +3747,7 @@
   .landing-root .hero-section {
     min-height: 100svh;
     height: 100svh;
-    padding: calc(1.25rem + env(safe-area-inset-top)) 20px 1.75rem;
+    padding: calc(1.25rem + env(safe-area-inset-top)) 20px calc(1.25rem + env(safe-area-inset-bottom));
     border-bottom: 0;
     position: relative;
     margin-left: -20px;
@@ -3702,7 +3755,7 @@
     padding-left: 20px;
     padding-right: 20px;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
     overflow: visible;
   }
@@ -3723,7 +3776,7 @@
     width: 100%;
     max-width: 100%;
     margin: 0;
-    padding-bottom: clamp(9rem, 34svh, 15rem);
+    padding-bottom: 0;
     text-align: center;
     align-items: center;
     position: relative;
@@ -3832,9 +3885,12 @@
     object-fit: cover;
     object-position: center bottom;
     filter: none;
+    opacity: 0.96;
   }
   .landing-root .hero-bg-video-overlay {
-    background: none;
+    background:
+      linear-gradient(to bottom, rgba(6, 3, 12, 0.2) 0%, rgba(6, 3, 12, 0.38) 50%, rgba(4, 2, 10, 0.55) 100%),
+      radial-gradient(ellipse 120% 80% at 50% 30%, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.48) 100%);
   }
   .landing-root .hero-section .eyebrow {
     margin-top: 0;
@@ -4161,16 +4217,16 @@
 
   /* pricing */
   .landing-root .pricing-header {
-    text-align: left;
+    text-align: center;
     margin-bottom: 32px;
   }
-  .landing-root .pricing-header .eyebrow { justify-content: flex-start; }
+  .landing-root .pricing-header .eyebrow { justify-content: center; }
   .landing-root .pricing-title {
     font-size: clamp(1.65rem, 7vw, 2rem);
     line-height: 1.12;
   }
-  .landing-root .pricing-subtitle { text-align: left; margin-left: 0; }
-  .landing-root .pricing-countdown { justify-content: flex-start; margin-bottom: 32px; gap: 10px; }
+  .landing-root .pricing-subtitle { text-align: center; margin: 0 auto; }
+  .landing-root .pricing-countdown { justify-content: center; margin-bottom: 32px; gap: 10px; }
   .landing-root .countdown-val { width: 48px; height: 48px; font-size: 22px; border-radius: 8px; }
   .landing-root .payment-ticker {
     border-radius: 10px;

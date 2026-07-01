@@ -26,6 +26,7 @@ import {
   sendCryptoPaymentRejectedEmail,
 } from "@/lib/email/send-crypto-payment-emails";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
 
 const PROOF_BUCKET = "crypto-payment-proofs";

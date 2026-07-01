@@ -29,6 +29,7 @@ export type ValidatedReferral = {
   affiliateId: string;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
 
 export function normalizeReferralCode(code: string): string {

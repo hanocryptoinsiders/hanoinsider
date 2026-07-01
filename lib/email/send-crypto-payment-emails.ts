@@ -8,6 +8,7 @@ import {
 } from "@/lib/email/crypto-payment-emails";
 import { getManualVerificationHours } from "@/lib/crypto-payments";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
 
 export async function sendCryptoProofReceivedEmail(args: {

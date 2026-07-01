@@ -8,6 +8,7 @@ import { recordPaidCustomerFromCheckoutSession } from "@/lib/stripe/paid-custome
 
 export const runtime = "nodejs";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
 
 function getServiceClient(): SB {

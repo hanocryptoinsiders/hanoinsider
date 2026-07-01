@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/email/resend";
 import { buildWelcomeEmail } from "@/lib/email/welcome-email";
 import { PLANS, type PlanId } from "@/lib/payments";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
 
 function planLabel(planId?: string | null): string {

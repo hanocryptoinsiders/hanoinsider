@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe";
 import { normalizeEmail, getPlanAmountUsd, isPlanId } from "@/lib/payments";
 import { buildReferralPaidCustomerFields } from "@/lib/referrals";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = SupabaseClient<any, any, any>;
 
 function unixToIso(value?: number | null) {

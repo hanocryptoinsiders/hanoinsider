@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { PaymentMethodsTicker } from "./PaymentMethodsTicker";
+import dynamic from "next/dynamic";
+
+const PaymentMethodsTicker = dynamic(() => import("./PaymentMethodsTicker").then((mod) => mod.PaymentMethodsTicker), { ssr: false });
 import { useEarlyBirdAvailability } from "./useEarlyBirdAvailability";
 import {
   EARLY_BIRD_LIMIT,
@@ -47,12 +49,31 @@ function useCountdown() {
   return timeLeft;
 }
 
+function CountdownDisplay() {
+  const countdown = useCountdown();
+  
+  return (
+    <div className="pricing-countdown" data-m-reveal data-m-reveal-delay="1">
+      {[
+        { val: countdown.days, label: "Days" },
+        { val: countdown.hours, label: "Hours" },
+        { val: countdown.minutes, label: "Min" },
+        { val: countdown.seconds, label: "Sec" },
+      ].map((item) => (
+        <div key={item.label} className="countdown-cell">
+          <span className="countdown-val">{String(item.val).padStart(2, "0")}</span>
+          <span className="countdown-label">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Pricing({
   onBuy,
 }: {
   onBuy: (planId: PlanId) => void;
 }) {
-  const countdown = useCountdown();
   const availability = useEarlyBirdAvailability();
   const soldOut = availability?.soldOut ?? false;
   const spotLabel = availability
@@ -86,19 +107,7 @@ export function Pricing({
         </p>
       </div>
 
-      <div className="pricing-countdown" data-m-reveal data-m-reveal-delay="1">
-        {[
-          { val: countdown.days, label: "Days" },
-          { val: countdown.hours, label: "Hours" },
-          { val: countdown.minutes, label: "Min" },
-          { val: countdown.seconds, label: "Sec" },
-        ].map((item) => (
-          <div key={item.label} className="countdown-cell">
-            <span className="countdown-val">{String(item.val).padStart(2, "0")}</span>
-            <span className="countdown-label">{item.label}</span>
-          </div>
-        ))}
-      </div>
+      <CountdownDisplay />
 
       <div className="pricing-grid m-pricing-stack" data-m-reveal data-m-reveal-delay="2">
         <article className="plan-card plan-card--regular">

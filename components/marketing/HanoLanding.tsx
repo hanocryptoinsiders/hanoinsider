@@ -7,7 +7,9 @@ import { Navbar } from "./Navbar";
 import { Hero } from "./Hero";
 import { HeroVideo } from "./HeroVideo";
 import { Pricing } from "./Pricing";
-import { BuyModal } from "./BuyModal";
+import dynamic from "next/dynamic";
+
+const BuyModal = dynamic(() => import("./BuyModal").then((mod) => mod.BuyModal), { ssr: false });
 import { PLANS, type PlanId } from "@/lib/payments";
 import { useLandingMobileReveal } from "./useLandingMobileReveal";
 import { scrollToSection } from "./useSectionScroll";
